@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { Suspense } from "react"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 import type { Job, JobSection } from "@/lib/types"
 import { JobApplyPageClient } from "@/components/jobs/JobApplyPageClient"
@@ -53,7 +54,9 @@ export default async function JobPage(props: { params: Promise<{ id: string }> }
     <>
       <PublicTopNav minimal />
       <main className="mx-auto w-full max-w-6xl px-4 py-10">
-        <JobApplyPageClient job={job} client={client} sections={sections} />
+        <Suspense fallback={<div className="h-96 w-full animate-pulse rounded-3xl bg-muted/20" />}>
+          <JobApplyPageClient job={job} client={client} sections={sections} />
+        </Suspense>
       </main>
     </>
   )

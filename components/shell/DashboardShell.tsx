@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
@@ -319,7 +319,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Content */}
-        <div className="content page-enter">{children}</div>
+        <div className="content page-enter">
+          <Suspense fallback={<div style={{ color: "var(--muted)", fontSize: "12px", fontFamily: "var(--font-mono)", padding: "40px" }}>LOADING...</div>}>
+            {children}
+          </Suspense>
+        </div>
       </div>
     </div>
   )

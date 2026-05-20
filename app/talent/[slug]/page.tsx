@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { Suspense } from "react"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 import { PublicTalentProfileClient } from "@/components/talent/PublicTalentProfileClient"
 
@@ -32,10 +33,12 @@ export default async function TalentProfilePage(props: { params: { slug: string 
   const { email: _email, phone: _phone, auth_user_id: _auth_user_id, ...publicCandidate } = (candidate as any) || {}
 
   return (
-    <PublicTalentProfileClient
-      candidate={publicCandidate}
-      workItems={(work || []) as any[]}
-      educationItems={(education || []) as any[]}
-    />
+    <Suspense fallback={<div className="min-h-screen bg-[#F6F7FB]" />}>
+      <PublicTalentProfileClient
+        candidate={publicCandidate}
+        workItems={(work || []) as any[]}
+        educationItems={(education || []) as any[]}
+      />
+    </Suspense>
   )
 }
