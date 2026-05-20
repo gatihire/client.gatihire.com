@@ -1,266 +1,121 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card"
-import { Button } from "@/components/ui/Button"
-import { Spinner } from "@/components/ui/Spinner"
-import { useSupabaseSession } from "@/lib/useSupabaseSession"
-import { bearerHeaders } from "@/lib/http"
-import type { Candidate } from "@/lib/types"
-import { Bell, Briefcase, Sparkles, User } from "lucide-react"
-
-type NotificationRow = {
-  id: string
-  type?: string | null
-  payload?: any
-  is_read?: boolean | null
-}
-
-function computeProfileProgress(candidate: Candidate | null) {
-  if (!candidate) return { pct: 0, missing: [] as string[] }
-  const missing: string[] = []
-  const has = (v: unknown) => Boolean(String(v || "").trim())
-  if (!has(candidate.name)) missing.push("Name")
-  if (!has(candidate.email)) missing.push("Email")
-  if (!has(candidate.phone)) missing.push("Phone")
-  if (!has(candidate.location)) missing.push("Location")
-  if (!has(candidate.current_role)) missing.push("Current role")
-  if (!has(candidate.total_experience)) missing.push("Experience")
-  if (!has((candidate as any)?.summary)) missing.push("Bio")
-  if (!has((candidate as any)?.file_url)) missing.push("Resume")
-  const total = 8
-  const done = total - missing.length
-  const pct = Math.max(0, Math.min(100, Math.round((done / total) * 100)))
-  return { pct, missing }
-}
-
-function resolveNotificationTarget(n: NotificationRow) {
-  const type = String(n?.type || "")
-  const payload = (n?.payload || {}) as any
-  const applicationId = String(payload?.applicationId || payload?.application_id || "").trim() || null
-  const jobId = String(payload?.jobId || payload?.job_id || "").trim() || null
-
-  if (type === "application_submitted" || type === "application_status_changed") {
-    if (applicationId) return `/dashboard/my-work?tab=applications&applicationId=${encodeURIComponent(applicationId)}`
-    if (jobId) return `/dashboard/my-work?tab=applications&jobId=${encodeURIComponent(jobId)}`
-    return "/dashboard/my-work?tab=applications"
-  }
-  if (type === "new_job_match" || type === "new_job_published") {
-    if (jobId) return `/dashboard/jobs?highlightJobId=${encodeURIComponent(jobId)}`
-    return "/dashboard/jobs"
-  }
-  return "/dashboard/profile"
-}
-
-function resolveNotificationTitle(n: NotificationRow) {
-  const type = String(n?.type || "")
-  if (type === "welcome") return "Welcome to GatiHire"
-  if (type === "profile_updated") return "Profile updated"
-  if (type === "application_submitted") return "Application submitted"
-  if (type === "application_status_changed") return "Application status updated"
-  if (type === "new_job_match") return "New job match"
-  if (type === "new_job_published") return "New job posted"
-  return "Update"
-}
-
-function resolveNotificationDescription(n: NotificationRow) {
-  const type = String(n?.type || "")
-  const payload = (n?.payload || {}) as any
-  if (typeof payload?.message === "string" && payload.message.trim()) return payload.message.trim()
-
-  if (type === "application_submitted" || type === "application_status_changed") {
-    const jobTitle = String(payload?.job_title || payload?.jobTitle || "").trim()
-    const status = String(payload?.status || payload?.application_status || "").trim()
-    if (jobTitle && status) return `Your application for ${jobTitle} is now ${status}.`
-    if (jobTitle) return `Your application for ${jobTitle} has an update.`
-    return "Your application has an update."
-  }
-
-  if (type === "new_job_match" || type === "new_job_published") {
-    const jobTitle = String(payload?.job_title || payload?.jobTitle || "").trim()
-    return jobTitle ? `New role: ${jobTitle}` : "You have a new job opportunity."
-  }
-
-  if (type === "welcome") return "Set up your profile and start applying to jobs."
-  return "You have a new update."
-}
+import { supabase } from "@/lib/supabase"
+import { PageLoader, SkeletonGrid } from "@/components/ui/Loader"
 
 export default function DashboardPage() {
-  const router = useRouter()
-  const { session, loading: sessionLoading } = useSupabaseSession()
-  const accessToken = session?.access_token
-
-  const [candidate, setCandidate] = useState<Candidate | null>(null)
-  const [notif, setNotif] = useState<NotificationRow[]>([])
-  const [busy, setBusy] = useState(false)
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!accessToken) {
-      setCandidate(null)
-      setNotif([])
-      return
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+      const [meRes, jobsRes] = await Promise.all([
+        fetch("/api/client/me", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/client/jobs", { headers: { Authorization: `Bearer ${token}` } })
+      ])
+      const me = await meRes.json()
+      const jobs = await jobsRes.json()
+      setData({ ...me, jobs: jobs.jobs || [] })
+      setLoading(false)
     }
-    let active = true
-    setBusy(true)
-    Promise.all([
-      fetch("/api/candidate/profile", { headers: bearerHeaders(accessToken) }).then((r) => r.json().catch(() => null)),
-      fetch("/api/candidate/notifications", { headers: bearerHeaders(accessToken) }).then((r) => r.json().catch(() => null))
-    ])
-      .then(([p, n]) => {
-        if (!active) return
-        setCandidate((p?.candidate || null) as Candidate | null)
-        setNotif(Array.isArray(n?.notifications) ? (n.notifications as NotificationRow[]) : [])
-      })
-      .finally(() => {
-        if (active) setBusy(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [accessToken])
+    load()
+  }, [])
 
-  const progress = useMemo(() => computeProfileProgress(candidate), [candidate])
-  const recentNotif = useMemo(() => notif.slice(0, 5), [notif])
+  const credits = data?.credits || { job_post_credits: 0, profile_unlock_credits: 0 }
+  const jobs = data?.jobs || []
+  const clientName = data?.client?.name || ""
 
-  if (!accessToken) {
-    return (
-      <Card>
-        <CardBody className="py-10 text-sm text-muted-foreground">{sessionLoading ? <Spinner /> : "Please log in."}</CardBody>
-      </Card>
-    )
+  if (loading) {
+    return <PageLoader />
   }
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Welcome back</CardTitle>
-            <CardDescription>Shortcuts to keep your job search moving.</CardDescription>
-          </CardHeader>
-          <CardBody className="grid gap-3 sm:grid-cols-2">
-            <Link href="/dashboard/jobs" className="block">
-              <div className="group rounded-2xl border border-border/60 bg-card/60 p-4 hover:bg-accent/60 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                    <Briefcase className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold">Browse jobs</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">Search roles and apply faster</div>
-                  </div>
-                </div>
-              </div>
+    <div className="page-enter">
+      <div className="ai-insight-banner" style={{ marginBottom: "24px" }}>
+        <div className="ai-banner-icon">👋</div>
+        <div className="ai-banner-body">
+          <div className="ai-banner-label">Welcome</div>
+          <div className="ai-banner-text">
+            {loading ? "Loading your workspace…" : <>Your hiring dashboard for <strong>{clientName || "your company"}</strong> is ready. Use <span className="hl">Smart Search</span> to find talent or <span className="hl">Post a Job</span> to start receiving applications.</>}
+          </div>
+          <div className="ai-banner-actions">
+            <Link href="/dashboard/searches" style={{ padding: "6px 14px", background: "var(--blue-bg)", border: "1px solid var(--blue-border)", borderRadius: "var(--r)", color: "var(--blue)", fontSize: "11px", textDecoration: "none", fontFamily: "var(--font-mono)" }}>
+              🔍 Smart Search
             </Link>
-
-            <Link href="/dashboard/profile" className="block">
-              <div className="group rounded-2xl border border-border/60 bg-card/60 p-4 hover:bg-accent/60 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold">Update profile</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">Improve matching and visibility</div>
-                  </div>
-                </div>
-              </div>
+            <Link href="/dashboard/jobs/new" style={{ padding: "6px 14px", background: "var(--gold-bg)", border: "1px solid var(--gold-border)", borderRadius: "var(--r)", color: "var(--gold)", fontSize: "11px", textDecoration: "none", fontFamily: "var(--font-mono)" }}>
+              + Post a Job
             </Link>
-
-            <Link href="/jobs" className="block">
-              <div className="group rounded-2xl border border-border/60 bg-card/60 p-4 hover:bg-accent/60 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold">Public jobs</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">See what’s trending right now</div>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <div className="rounded-2xl border border-border/60 bg-card/60 p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                  <Bell className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold">Notifications</div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">Open the bell in the header</div>
-                </div>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile strength</CardTitle>
-            <CardDescription>Higher completion improves recommendations.</CardDescription>
-          </CardHeader>
-          <CardBody>
-            <div className="flex items-end justify-between gap-3">
-              <div className="text-3xl font-semibold">{busy ? "…" : `${progress.pct}%`}</div>
-              <Link href="/dashboard/profile">
-                <Button variant="secondary" size="sm">Improve</Button>
-              </Link>
-            </div>
-            <div className="mt-4 h-2 w-full rounded-full bg-muted/60 overflow-hidden">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${progress.pct}%` }} />
-            </div>
-            {progress.missing.length ? (
-              <div className="mt-3 text-xs text-muted-foreground">Missing: {progress.missing.slice(0, 4).join(", ")}{progress.missing.length > 4 ? "…" : ""}</div>
-            ) : (
-              <div className="mt-3 text-xs text-muted-foreground">You’re all set.</div>
-            )}
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent activity</CardTitle>
-          <CardDescription>Your latest notifications and updates.</CardDescription>
-        </CardHeader>
-        <CardBody>
-          {busy ? (
-            <div className="py-6 text-sm text-muted-foreground"><Spinner /></div>
-          ) : recentNotif.length ? (
-            <div className="grid gap-2">
-              {recentNotif.map((n) => {
-                const title = resolveNotificationTitle(n)
-                const desc = resolveNotificationDescription(n)
-                const target = resolveNotificationTarget(n)
-                return (
-                  <button
-                    key={String(n.id)}
-                    className={[
-                      "w-full rounded-2xl border border-border/60 bg-card/60 px-4 py-3 text-left hover:bg-accent/60 transition-colors",
-                      n.is_read ? "" : "ring-1 ring-primary/20"
-                    ].join(" ")}
-                    onClick={() => router.push(target)}
-                    type="button"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold truncate">{title}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">{desc}</div>
-                      </div>
-                      {!n.is_read ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" /> : null}
+      {/* Stats Grid */}
+      <div className="intel-grid">
+        <div className="metric-card gold">
+          <div className="metric-eyebrow">🔓 Unlock Credits</div>
+          <div className="metric-value">{loading ? "…" : credits.profile_unlock_credits}</div>
+          <div className="metric-sub">Profile unlocks remaining</div>
+          <Link href="/dashboard/billing" style={{ display: "inline-block", marginTop: "10px", fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--gold)" }}>Get more →</Link>
+        </div>
+        <div className="metric-card blue">
+          <div className="metric-eyebrow">💼 Job Credits</div>
+          <div className="metric-value">{loading ? "…" : credits.job_post_credits}</div>
+          <div className="metric-sub">Job post credits remaining</div>
+          <Link href="/dashboard/billing" style={{ display: "inline-block", marginTop: "10px", fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--blue)" }}>Get more →</Link>
+        </div>
+        <div className="metric-card teal">
+          <div className="metric-eyebrow">📋 Active Jobs</div>
+          <div className="metric-value">{loading ? "…" : jobs.filter((j: any) => j.status === "open").length}</div>
+          <div className="metric-sub">Currently open positions</div>
+          <Link href="/dashboard/jobs" style={{ display: "inline-block", marginTop: "10px", fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--blue)" }}>View all →</Link>
+        </div>
+        <div className="metric-card green">
+          <div className="metric-eyebrow">👥 Total Posted</div>
+          <div className="metric-value">{loading ? "…" : jobs.length}</div>
+          <div className="metric-sub">Jobs posted on GatiHire</div>
+        </div>
+      </div>
+
+      {/* Recent Jobs */}
+      <div className="section-card">
+        <div className="section-header">
+          <div>
+            <div className="section-title">Recent Job Postings</div>
+            <div className="section-sub">Your latest open positions</div>
+          </div>
+          <Link href="/dashboard/jobs/new" style={{ padding: "7px 14px", background: "var(--gold)", borderRadius: "var(--r)", color: "var(--ink)", fontSize: "12px", fontWeight: 600, textDecoration: "none", fontFamily: "var(--font-body)" }}>+ New Job</Link>
+        </div>
+        <div className="section-body">
+          {loading ? <div style={{ color: "var(--muted)", fontSize: "13px" }}>Loading…</div>
+            : jobs.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 0", color: "var(--dim)", fontSize: "13px" }}>
+                No jobs posted yet.{" "}
+                <Link href="/dashboard/jobs/new" style={{ color: "var(--gold)" }}>Post your first job →</Link>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {jobs.slice(0, 5).map((job: any) => (
+                  <Link key={job.id} href={`/dashboard/jobs/${job.id}`} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "12px 14px", background: "var(--ink3)", border: "1px solid var(--line)", borderRadius: "var(--r2)", textDecoration: "none", transition: "border-color 0.12s" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "13px", color: "var(--bright)", fontWeight: 600 }}>{job.title}</div>
+                      <div style={{ fontSize: "11px", color: "var(--secondary)", marginTop: "2px" }}>{job.location} · {job.employment_type?.replace('_', ' ') || "Full-time"}</div>
                     </div>
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="py-6 text-sm text-muted-foreground">No activity yet.</div>
-          )}
-        </CardBody>
-      </Card>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", padding: "3px 8px", borderRadius: "4px", background: job.status === "open" ? "var(--green-bg)" : "var(--ink4)", color: job.status === "open" ? "var(--green)" : "var(--dim)", border: `1px solid ${job.status === "open" ? "var(--green-border)" : "var(--line2)"}` }}>
+                        {job.status || "open"}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+        </div>
+      </div>
     </div>
   )
 }

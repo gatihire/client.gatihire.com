@@ -1,46 +1,58 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { createSupabaseMiddlewareClient } from "@/lib/supabaseSsr"
-
-export const runtime = "nodejs"
+import { createServerClient } from "@supabase/ssr"
+import { NextResponse, type NextRequest } from "next/server"
 
 export async function GET(request: NextRequest) {
-  const redirectTo = request.nextUrl.clone()
-  const code = redirectTo.searchParams.get("code")
-  const returnTo = redirectTo.searchParams.get("returnTo") || "/dashboard/jobs"
+  const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get("code")
+  const next = requestUrl.searchParams.get("returnTo") || "/dashboard"
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin
 
-  if (!code) {
-    redirectTo.pathname = "/auth/login"
-    redirectTo.search = `returnTo=${encodeURIComponent(returnTo)}`
-    return NextResponse.redirect(redirectTo)
-  }
+  if (code) {
+    // Create base response. Supabase client will attach cookies to this.
+    let response = NextResponse.redirect(`${origin}${next}`)
 
-  // Prepare a redirect response object that will carry the auth cookies,
-  // and update its Location header after we decide the destination.
-  let dest = returnTo.startsWith("/") ? returnTo : "/dashboard/jobs"
-  const response = NextResponse.redirect(new URL(dest, request.url))
-  const supabase = createSupabaseMiddlewareClient(request, response)
-  await supabase.auth.exchangeCodeForSession(code)
-
-  try {
-    const { data: userRes } = await supabase.auth.getUser()
-    const userId = userRes?.user?.id || ""
-    if (userId) {
-      const { data: c } = await supabase
-        .from("candidates")
-        .select("id,file_url,total_experience,name,status")
-        .eq("auth_user_id", userId)
-        .maybeSingle()
-      const isTrulyNew = !c?.id
-      if (isTrulyNew) {
-        dest = "/onboarding"
-      } else if (dest === "/onboarding") {
-        dest = "/dashboard/jobs"
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            )
+          }
+        }
       }
+    )
+
+    const { error, data } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error && data.session) {
+      // Use supabaseAdmin to bypass RLS since client_users might not have an RLS policy
+      const { supabaseAdmin } = await import("@/lib/supabaseAdmin")
+      const { data: clientUser } = await supabaseAdmin
+        .from("client_users")
+        .select("onboarding_completed")
+        .eq("auth_user_id", data.session.user.id)
+        .maybeSingle()
+
+      if (!clientUser || !clientUser.onboarding_completed) {
+        // If they need onboarding, change the redirect destination
+        // but carry over the cookies that Supabase just set!
+        const finalResponse = NextResponse.redirect(`${origin}/onboarding`)
+        response.cookies.getAll().forEach(c => {
+          finalResponse.cookies.set(c.name, c.value)
+        })
+        return finalResponse
+      }
+      
+      return response
     }
-  } catch {
   }
 
-  response.headers.set("Location", new URL(dest, request.url).toString())
-  return response
+  return NextResponse.redirect(`${origin}/auth/login?error=auth_failed`)
 }

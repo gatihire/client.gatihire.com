@@ -1,64 +1,63 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { createSupabaseMiddlewareClient } from "@/lib/supabaseSsr"
+import { createServerClient } from "@supabase/ssr"
+import { NextResponse, type NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next()
-  const supabase = createSupabaseMiddlewareClient(request, response)
+  let supabaseResponse = NextResponse.next({ request })
 
-  const {
-    data: { user }
-  } = await supabase.auth.getUser()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        }
+      }
+    }
+  )
 
+  const { data: { user } } = await supabase.auth.getUser()
   const isAuthed = Boolean(user)
-  const { pathname, search } = request.nextUrl
-  const code = request.nextUrl.searchParams.get("code")
-  const error = request.nextUrl.searchParams.get("error")
+  const { pathname } = request.nextUrl
 
-  const fullPath = `${pathname}${search}`
-  const authRoutes = ["/auth/login", "/auth/sign_up", "/auth/sign-up", "/auth/signup"]
-  const protectedPrefixes = ["/dashboard", "/onboarding"]
+  // Auth callback — always allow
+  if (pathname.startsWith("/auth/callback")) return supabaseResponse
 
-  if (pathname === "/" && (code || error)) {
-    const redirectTo = request.nextUrl.clone()
-    redirectTo.pathname = "/auth/callback"
-    if (!redirectTo.searchParams.get("returnTo")) redirectTo.searchParams.set("returnTo", "/dashboard/jobs")
-    return NextResponse.redirect(redirectTo)
-  }
-
+  // Redirect root
   if (pathname === "/") {
-    const redirectTo = request.nextUrl.clone()
-    redirectTo.pathname = isAuthed ? "/dashboard/jobs" : "/jobs"
-    redirectTo.search = isAuthed ? "" : "?login=1"
-    return NextResponse.redirect(redirectTo)
+    const url = request.nextUrl.clone()
+    url.pathname = isAuthed ? "/dashboard" : "/auth/login"
+    return NextResponse.redirect(url)
   }
 
-  if (pathname === "/jobs" && isAuthed) {
-    const redirectTo = request.nextUrl.clone()
-    redirectTo.pathname = "/dashboard/jobs"
-    redirectTo.search = ""
-    return NextResponse.redirect(redirectTo)
+  // Already authed trying to hit auth pages → go to dashboard
+  // BUT never redirect away from /auth/callback — it handles its own logic
+  if (pathname.startsWith("/auth") && !pathname.startsWith("/auth/callback") && isAuthed) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/dashboard"
+    return NextResponse.redirect(url)
   }
 
-  if (authRoutes.includes(pathname) && isAuthed) {
-    const redirectTo = request.nextUrl.clone()
-    redirectTo.pathname = "/dashboard/jobs"
-    redirectTo.search = ""
-    return NextResponse.redirect(redirectTo)
+  // Protected routes — require auth
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding")) {
+    if (!isAuthed) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/auth/login"
+      url.searchParams.set("returnTo", pathname)
+      return NextResponse.redirect(url)
+    }
   }
 
-  
-
-  if (protectedPrefixes.some((p) => pathname.startsWith(p)) && !isAuthed) {
-    const redirectTo = request.nextUrl.clone()
-    redirectTo.pathname = "/auth/login"
-    redirectTo.search = `returnTo=${encodeURIComponent(fullPath)}`
-    return NextResponse.redirect(redirectTo)
-  }
-
-  return response
+  return supabaseResponse
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]
 }

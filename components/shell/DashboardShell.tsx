@@ -3,444 +3,324 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Bell, Briefcase, ChevronLeft, ChevronRight, LayoutGrid, LogOut, User } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { useSupabaseSession } from "@/lib/useSupabaseSession"
-import { bearerHeaders } from "@/lib/http"
-import { WorkAvailabilityModal } from "@/components/dashboard/WorkAvailabilityModal"
-import { ThemeToggle } from "@/components/theme/ThemeToggle"
-import { BRAND_LOGO_URL, BRAND_NAME } from "@/lib/branding"
 
-type NavItem = { label: string; href: string; active: (p: string) => boolean; comingSoon?: boolean }
+// ── SVG Icon Components ─────────────────────────────────────────────────────
+function IconSearch() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+  )
+}
+function IconUnlock() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+    </svg>
+  )
+}
+function IconBriefcase() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+    </svg>
+  )
+}
+function IconKanban() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="7" rx="1"/>
+    </svg>
+  )
+}
+function IconCreditCard() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+    </svg>
+  )
+}
+function IconBarChart() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  )
+}
+function IconLogOut() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  )
+}
+function IconKey() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+    </svg>
+  )
+}
+function IconAlertTriangle() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  )
+}
 
-const SIDEBAR_COLLAPSED_KEY = "truckinzy:dashboardSidebarCollapsed"
+function IconChevronLeft() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+  )
+}
+function IconChevronRight() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  )
+}
+
+// ── Nav config ──────────────────────────────────────────────────────────────
+const NAV_SECTIONS = [
+  {
+    label: "DISCOVER",
+    items: [
+      { id: "search",   label: "Smart Search",      Icon: IconSearch,     href: "/dashboard/searches", match: (p: string) => p.startsWith("/dashboard/searches") },
+      { id: "unlocked", label: "Unlocked Profiles",  Icon: IconUnlock,     href: "/dashboard/unlocked", match: (p: string) => p.startsWith("/dashboard/unlocked") },
+    ]
+  },
+  {
+    label: "HIRING",
+    items: [
+      { id: "jobs",     label: "My Jobs",            Icon: IconBriefcase,  href: "/dashboard/jobs",     match: (p: string) => p.startsWith("/dashboard/jobs") },
+      { id: "pipeline", label: "Pipeline",           Icon: IconKanban,     href: "/dashboard/pipeline", match: (p: string) => p.startsWith("/dashboard/pipeline") },
+    ]
+  },
+  {
+    label: "ACCOUNT",
+    items: [
+      { id: "billing",  label: "Credits & Billing",  Icon: IconCreditCard, href: "/dashboard/billing",  match: (p: string) => p.startsWith("/dashboard/billing") },
+      { id: "home",     label: "Overview",           Icon: IconBarChart,   href: "/dashboard",          match: (p: string) => p === "/dashboard" },
+    ]
+  }
+]
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
+  const router   = useRouter()
   const pathname = usePathname() || ""
-  const { session } = useSupabaseSession()
-  const accessToken = session?.access_token
+  const [menuOpen,    setMenuOpen]    = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [credits,     setCredits]     = useState<{ job_post_credits: number; profile_unlock_credits: number } | null>(null)
+  const [clientData,  setClientData]  = useState<any>(null)
+  const [clientName,  setClientName]  = useState("")
+  const [userEmail,   setUserEmail]   = useState("")
+  const [avatarUrl,   setAvatarUrl]   = useState("")
 
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [notifOpen, setNotifOpen] = useState(false)
-  const [availabilityOpen, setAvailabilityOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false
-    try {
-      const v = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
-      if (v === null) return false
-      return v === "1"
-    } catch {
-      return false
+  const loadUserData = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push("/auth/login"); return }
+
+    const meta = (user.user_metadata as any) || {}
+    setUserEmail(user.email || "")
+    setAvatarUrl(meta.avatar_url || meta.picture || "")
+
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return
+
+    const res = await fetch("/api/client/me", { headers: { Authorization: `Bearer ${token}` } })
+    if (res.ok) {
+      const d = await res.json()
+      setClientData(d.client || null)
+      setClientName(d.client?.name || "")
+      setCredits(d.credits || null)
     }
-  })
-  const [candidateName, setCandidateName] = useState<string>("")
-  const [candidateProfile, setCandidateProfile] = useState<any | null | undefined>(undefined)
-  const [notifications, setNotifications] = useState<any[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [notifBusy, setNotifBusy] = useState(false)
+  }, [router])
 
-  const nav = useMemo<NavItem[]>(
-    () => [
-      { label: "Jobs", href: "/dashboard/jobs", active: (p) => p === "/dashboard" || p === "/dashboard/jobs" || p.startsWith("/dashboard/jobs/") },
-      { label: "My work", href: "/dashboard/my-work?tab=invites", active: (p) => p.startsWith("/dashboard/my-work") },
-      { label: "Profile", href: "/dashboard/profile", active: (p) => p.startsWith("/dashboard/profile") },
-      { label: "Career help", href: "#", active: () => false, comingSoon: true },
-      { label: "Wallet", href: "#", active: () => false, comingSoon: true },
-      { label: "Refer and earn", href: "#", active: () => false, comingSoon: true }
-    ],
-    []
-  )
-
-  useEffect(() => {
-    if (!accessToken) {
-      setCandidateName("")
-      setCandidateProfile(undefined)
-      return
-    }
-    let active = true
-    fetch("/api/candidate/profile?details=0", { headers: bearerHeaders(accessToken) })
-      .then(async (r) => {
-        const data = await r.json().catch(() => null)
-        if (!active) return
-        if (!r.ok) return
-        const name = typeof data?.candidate?.name === "string" ? data.candidate.name : ""
-        setCandidateName(name)
-        setCandidateProfile(data?.candidate || null)
-      })
-      .catch(() => {})
-    return () => {
-      active = false
-    }
-  }, [accessToken])
-
-  useEffect(() => {
-    if (!accessToken) return
-    if (candidateProfile === undefined) return
-
-    const hasResume = Boolean((candidateProfile as any)?.file_url)
-    const requiredReady = Boolean((candidateProfile as any)?.name) && Boolean((candidateProfile as any)?.current_role) && Boolean((candidateProfile as any)?.total_experience) && Boolean((candidateProfile as any)?.location)
-
-    if (!hasResume || !requiredReady) {
-      const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : pathname
-      router.replace(`/onboarding?returnTo=${encodeURIComponent(current)}`)
-    }
-  }, [accessToken, candidateProfile, pathname, router])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0")
-    } catch {}
-  }, [collapsed])
-
-  const avatarUrl = useMemo(() => {
-    const meta = (session?.user?.user_metadata as any) || {}
-    const url = meta.avatar_url || meta.picture || meta.avatar
-    return typeof url === "string" ? url : ""
-  }, [session?.user?.user_metadata])
-
-  const displayName = useMemo(() => {
-    const meta = (session?.user?.user_metadata as any) || {}
-    const name = meta.full_name || meta.name
-    if (typeof name === "string" && name.trim()) return name.trim()
-    if (candidateName.trim()) return candidateName.trim()
-    return ""
-  }, [candidateName, session?.user?.user_metadata])
+  useEffect(() => { loadUserData() }, [loadUserData])
 
   const initials = useMemo(() => {
-    const src = displayName || "User"
-    const words = src.replace(/[._-]+/g, " ").split(" ").filter(Boolean)
-    const a = (words[0]?.[0] || "U").toUpperCase()
-    const b = (words[1]?.[0] || "").toUpperCase()
-    return `${a}${b}`.slice(0, 2)
-  }, [displayName])
-
-  const loadNotifications = useCallback(async () => {
-    if (!accessToken) return
-    setNotifBusy(true)
-    try {
-      const res = await fetch("/api/candidate/notifications", { headers: bearerHeaders(accessToken) })
-      const data = await res.json().catch(() => null)
-      if (!res.ok) return
-      setNotifications(Array.isArray(data?.notifications) ? data.notifications : [])
-      setUnreadCount(Number(data?.unreadCount || 0) || 0)
-    } finally {
-      setNotifBusy(false)
-    }
-  }, [accessToken])
-
-  useEffect(() => {
-    if (!accessToken) return
-    loadNotifications()
-  }, [accessToken, loadNotifications])
+    const src = userEmail || "U"
+    return src.slice(0, 2).toUpperCase()
+  }, [userEmail])
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    router.push("/")
+    router.push("/auth/login")
     router.refresh()
   }
 
+  const lowCredits = credits !== null && credits.profile_unlock_credits <= 2
+
   return (
-    <div className="min-h-screen bg-app pb-20 md:pb-0">
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur">
-        <div className="flex h-16 w-full items-center gap-3 px-6">
-          <Link href="/dashboard/jobs" className="flex items-center gap-2">
-            <div className="h-8 w-28 overflow-hidden">
-              <img 
-                src={BRAND_LOGO_URL} 
-                alt={BRAND_NAME} 
-                className="h-full w-full object-contain dark:invert transition-all duration-300" 
-              />
-            </div>
-          </Link>
-
-          <div className="ml-auto flex items-center gap-2">
-            <div className="relative">
-              <button
-                className="relative h-10 w-10 rounded-full border border-border/60 bg-card/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-                onClick={() => {
-                  setNotifOpen((v) => !v)
-                  setMenuOpen(false)
-                  if (!notifOpen) loadNotifications()
-                }}
-                aria-label="Notifications"
-              >
-                <Bell className="mx-auto h-4 w-4" />
-                {unreadCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                ) : null}
-              </button>
-
-              {notifOpen ? (
-                <div className="absolute right-0 top-12 w-[340px] rounded-2xl border border-border/60 bg-popover p-2 shadow-lg shadow-black/10 dark:shadow-black/40">
-                  <div className="flex items-center justify-between px-2 py-1">
-                    <div className="text-sm font-semibold">Notifications</div>
-                    <button
-                      className="rounded-xl px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-                      onClick={async () => {
-                        if (!accessToken) return
-                        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
-                        setUnreadCount(0)
-                        await fetch("/api/candidate/notifications", {
-                          method: "POST",
-                          headers: bearerHeaders(accessToken, { "Content-Type": "application/json" }),
-                          body: JSON.stringify({ action: "mark_all_read" })
-                        })
-                        await loadNotifications()
-                      }}
-                    >
-                      Mark all read
-                    </button>
-                  </div>
-
-                  <div className="mt-1 max-h-[360px] overflow-auto">
-                    {notifBusy ? (
-                      <div className="px-3 py-6 text-sm text-muted-foreground">Loading…</div>
-                    ) : notifications.length ? (
-                      <div className="grid gap-1">
-                        {notifications.map((n: any) => {
-                          const type = String(n?.type || "")
-                          const payload = (n?.payload || {}) as any
-
-                          let title = "Update"
-                          if (type === "welcome") title = `Welcome to ${BRAND_NAME}`
-                          else if (type === "profile_updated") title = "Profile updated"
-                          else if (type === "application_submitted") title = "Application submitted"
-                          else if (type === "application_status_changed") title = "Application status updated"
-                          else if (type === "new_job_match") title = "New job match"
-                          else if (type === "new_job_published") title = "New job posted"
-
-                          let description = ""
-                          if (typeof payload?.message === "string" && payload.message.trim()) {
-                            description = payload.message.trim()
-                          } else if (Array.isArray(payload?.changed) && payload.changed.length) {
-                            description = `Updated: ${payload.changed.slice(0, 3).join(", ")}${payload.changed.length > 3 ? "…" : ""}`
-                          } else if (type === "application_submitted" || type === "application_status_changed") {
-                            const jobTitle = String(payload?.job_title || payload?.jobTitle || "").trim()
-                            const status = String(payload?.status || payload?.application_status || "").trim()
-                            if (jobTitle && status) {
-                              description = `Your application for ${jobTitle} is now ${status}.`
-                            } else if (jobTitle) {
-                              description = `Your application for ${jobTitle} has an update.`
-                            } else {
-                              description = "Your application has an update."
-                            }
-                          } else if (type === "new_job_match" || type === "new_job_published") {
-                            const jobTitle = String(payload?.job_title || payload?.jobTitle || "").trim()
-                            if (jobTitle) {
-                              description = `New role: ${jobTitle}`
-                            } else {
-                              description = "You have a new job opportunity."
-                            }
-                          } else if (type === "welcome") {
-                            description = "Set up your profile and start applying to jobs."
-                          } else {
-                            description = "You have a new update."
-                          }
-
-                          const applicationId =
-                            String(payload?.applicationId || payload?.application_id || "").trim() || null
-                          const jobId = String(payload?.jobId || payload?.job_id || "").trim() || null
-
-                          let target = "/dashboard/profile"
-                          if (type === "application_submitted" || type === "application_status_changed") {
-                            if (applicationId) {
-                              target = `/dashboard/my-work?tab=applications&applicationId=${encodeURIComponent(applicationId)}`
-                            } else if (jobId) {
-                              target = `/dashboard/my-work?tab=applications&jobId=${encodeURIComponent(jobId)}`
-                            } else {
-                              target = "/dashboard/my-work?tab=applications"
-                            }
-                          } else if (type === "new_job_match" || type === "new_job_published") {
-                            if (jobId) {
-                              target = `/dashboard/jobs?highlightJobId=${encodeURIComponent(jobId)}`
-                            } else {
-                              target = "/dashboard/jobs"
-                            }
-                          }
-
-                          return (
-                            <button
-                              key={String(n.id)}
-                              className={[
-                                "w-full rounded-xl px-3 py-2 text-left hover:bg-accent/60",
-                                n.is_read ? "" : "bg-primary/10"
-                              ].join(" ")}
-                              onClick={async () => {
-                                if (!accessToken) return
-                                setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)))
-                                setUnreadCount((c) => Math.max(0, c - (n.is_read ? 0 : 1)))
-                                await fetch("/api/candidate/notifications", {
-                                  method: "POST",
-                                  headers: bearerHeaders(accessToken, { "Content-Type": "application/json" }),
-                                  body: JSON.stringify({ action: "mark_read", id: n.id })
-                                })
-                                setNotifOpen(false)
-                                router.push(target)
-                              }}
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="truncate text-sm font-medium">{title}</div>
-                                  <div className="mt-0.5 text-xs text-muted-foreground">{description}</div>
-                                </div>
-                                {!n.is_read ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" /> : null}
-                              </div>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <div className="px-3 py-6 text-sm text-muted-foreground">No notifications yet.</div>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <ThemeToggle />
-
-            <button
-              className="relative h-10 w-10 rounded-full border border-border/60 bg-card/60 text-sm font-semibold"
-              onClick={() => {
-                setMenuOpen((v) => !v)
-                setNotifOpen(false)
-              }}
-              aria-label="Open menu"
-            >
-              {avatarUrl ? <img className="h-full w-full rounded-full object-cover" alt={displayName || "Avatar"} src={avatarUrl} /> : initials}
-            </button>
-
-            {menuOpen ? (
-              <div className="absolute right-4 top-16 w-56 rounded-2xl border border-border/60 bg-popover p-2 shadow-lg shadow-black/10 dark:shadow-black/40">
-                <Link
-                  className="block rounded-xl px-3 py-2 text-sm hover:bg-accent/60"
-                  href="/dashboard/profile"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Profile
-                </Link>
-                <button
-                  className="block w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-accent/60"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    setAvailabilityOpen(true)
-                  }}
-                >
-                  Work availability
-                </button>
-                <button
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-accent/60"
-                  onClick={async () => {
-                    setMenuOpen(false)
-                    await signOut()
-                  }}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </header>
-
-      <div className="flex w-full">
-        <aside
-          className={[
-            "relative hidden md:block shrink-0 border-r border-border/60 bg-panel",
-            collapsed ? "w-[72px]" : "w-[240px]"
-          ].join(" ")}
+    <div style={{ display: "flex", flex: 1, width: "100%", height: "100vh", overflow: "hidden", background: "#f6f8fa" }}>
+      {/* ── SIDEBAR ── */}
+      <aside className="sidebar" style={{ display: "flex", flexDirection: "column", width: isSidebarCollapsed ? 68 : 220, minWidth: isSidebarCollapsed ? 68 : 220, transition: "width 0.2s" }}>
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          style={{
+            position: "absolute", right: -12, top: 24, width: 24, height: 24,
+            background: "var(--ink2)", border: "1px solid var(--line)", borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+            color: "var(--secondary)", zIndex: 10, padding: 0
+          }}
         >
-          <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-auto p-3">
-            <div className={collapsed ? "flex justify-center" : "flex items-center justify-between"}>
-              <div className={["text-xs font-medium text-muted-foreground", collapsed ? "sr-only" : ""].join(" ")}>Navigation</div>
-              <button
-                className="rounded-xl border border-border/60 bg-card/60 p-2 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-                onClick={() => setCollapsed((v) => !v)}
-                aria-label="Toggle sidebar"
-              >
-                {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </button>
-            </div>
+          {isSidebarCollapsed ? <IconChevronRight /> : <IconChevronLeft />}
+        </button>
 
-            <nav className="mt-3 grid gap-1">
-              {nav.map((item) => {
-                const active = item.active(pathname)
-                const disabled = item.comingSoon
-                const icon =
-                  item.label === "Jobs" ? (
-                    <Briefcase className="h-4 w-4" />
-                  ) : item.label === "My work" ? (
-                    <LayoutGrid className="h-4 w-4" />
-                  ) : item.label === "Profile" ? (
-                    <User className="h-4 w-4" />
-                  ) : (
-                    <User className="h-4 w-4" />
-                  )
+        {/* Logo */}
+        <div className="logo-area" style={{ padding: isSidebarCollapsed ? "24px 10px 20px" : "24px 20px 20px", display: "flex", justifyContent: "center", overflow: "hidden" }}>
+          {isSidebarCollapsed ? (
+            <div className="logo-wordmark" style={{ fontSize: 16 }}>G<span>H</span></div>
+          ) : (
+            <div>
+              <div className="logo-wordmark">Gati<span>Hire</span></div>
+              <div className="logo-tagline">Client Portal</div>
+            </div>
+          )}
+        </div>
+
+        {/* Company pill */}
+        {clientName && !isSidebarCollapsed && (
+          <div className="workspace-pill">
+            <div className="ws-icon">{clientName.slice(0, 2).toUpperCase()}</div>
+            <div>
+              <div className="ws-name">{clientName}</div>
+              <div className="ws-plan">Hiring Account</div>
+            </div>
+          </div>
+        )}
+        {clientName && isSidebarCollapsed && (
+           <div style={{ display: "flex", justifyContent: "center", margin: "10px 0" }}>
+             <div className="ws-icon">{clientName.slice(0, 2).toUpperCase()}</div>
+           </div>
+        )}
+
+        {/* Nav */}
+        <nav style={{ flex: 1, overflow: "auto", padding: "8px 0" }}>
+          {NAV_SECTIONS.map(section => (
+            <div key={section.label}>
+              {!isSidebarCollapsed && <div className="nav-group-label">{section.label}</div>}
+              {section.items.map(item => {
+                const active = item.match(pathname)
                 return (
-                  <a
-                    key={item.label}
-                    href={disabled ? "#" : item.href}
-                    className={[
-                      "flex items-center justify-between rounded-xl px-3 py-2 text-sm",
-                      active ? "bg-accent/60" : "hover:bg-accent/60",
-                      disabled ? "cursor-not-allowed opacity-60" : ""
-                    ].join(" ")}
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    title={isSidebarCollapsed ? item.label : undefined}
+                    className={`nav-item${active ? " active" : ""}`}
+                    style={{ textDecoration: "none", justifyContent: isSidebarCollapsed ? "center" : "flex-start", padding: isSidebarCollapsed ? "10px" : undefined }}
                   >
-                    <span className="flex items-center gap-3">
-                      {icon}
-                      <span className={collapsed ? "sr-only" : ""}>{item.label}</span>
-                    </span>
-                    {item.comingSoon && !collapsed ? <span className="rounded-full border bg-background px-2 py-0.5 text-[10px]">Soon</span> : null}
-                  </a>
+                    <span className="nav-icon"><item.Icon /></span>
+                    {!isSidebarCollapsed && (
+                      <>
+                        {item.label}
+                        {item.id === "billing" && credits && (
+                          <span className="nav-badge">
+                            {credits.profile_unlock_credits + credits.job_post_credits}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Link>
                 )
               })}
-            </nav>
+            </div>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="sidebar-footer" style={{ padding: isSidebarCollapsed ? "12px 6px" : "12px" }}>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setMenuOpen(v => !v)}
+              className="user-row"
+              style={{ width: "100%", background: "none", border: "none", cursor: "pointer", justifyContent: isSidebarCollapsed ? "center" : "flex-start", padding: isSidebarCollapsed ? "8px 0" : undefined }}
+            >
+              <div className="user-av" style={{ margin: isSidebarCollapsed ? 0 : undefined }}>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                  : initials
+                }
+              </div>
+              {!isSidebarCollapsed && (
+                <div style={{ textAlign: "left" }}>
+                  <div className="user-name">{clientName || "My Account"}</div>
+                  <div className="user-role">{userEmail}</div>
+                </div>
+              )}
+            </button>
+
+            {menuOpen && (
+              <div style={{
+                position: "absolute", bottom: "100%", left: 0, right: 0, marginBottom: "4px",
+                background: "#ffffff", border: "1px solid #eaecf0", borderRadius: "var(--r2)",
+                padding: "6px", zIndex: 50,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.1)"
+              }}>
+                <button
+                  onClick={signOut}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    width: "100%", padding: "8px 10px", background: "none", border: "none",
+                    cursor: "pointer", color: "var(--rose)", fontSize: "12px", borderRadius: "var(--r)",
+                    fontFamily: "var(--font-body)"
+                  }}
+                >
+                  <IconLogOut /> Sign Out
+                </button>
+              </div>
+            )}
           </div>
-        </aside>
-
-        <main className="min-w-0 flex-1 p-6">{children}</main>
-      </div>
-
-      <WorkAvailabilityModal open={availabilityOpen} onClose={() => setAvailabilityOpen(false)} />
-
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 md:hidden">
-        <div className="flex w-full items-center justify-around px-2 py-2">
-          <Link
-            href="/dashboard/jobs"
-            className={[
-              "flex flex-col items-center gap-1 rounded-2xl px-4 py-2 text-xs",
-              pathname === "/dashboard" || pathname.startsWith("/dashboard/jobs") ? "bg-accent/60" : ""
-            ].join(" ")}
-          >
-            <Briefcase className="h-5 w-5" />
-            Jobs
-          </Link>
-          <Link
-            href="/dashboard/my-work?tab=invites"
-            className={[
-              "flex flex-col items-center gap-1 rounded-2xl px-4 py-2 text-xs",
-              pathname.startsWith("/dashboard/my-work") ? "bg-accent/60" : ""
-            ].join(" ")}
-          >
-            <LayoutGrid className="h-5 w-5" />
-            My work
-          </Link>
-          <Link
-            href="/dashboard/profile"
-            className={[
-              "flex flex-col items-center gap-1 rounded-2xl px-4 py-2 text-xs",
-              pathname.startsWith("/dashboard/profile") ? "bg-accent/60" : ""
-            ].join(" ")}
-          >
-            <User className="h-5 w-5" />
-            Profile
-          </Link>
         </div>
-      </nav>
+      </aside>
+
+      {/* ── MAIN ── */}
+      <div className="main">
+        {/* Topbar */}
+        <div className="topbar">
+          <div className="topbar-left">
+            {NAV_SECTIONS.flatMap(s => s.items).map(item =>
+              item.match(pathname) ? (
+                <div key={item.id}>
+                  <div className="page-eyebrow">GatiHire Client Portal</div>
+                  <div className="page-heading">{item.label}</div>
+                </div>
+              ) : null
+            )}
+            {pathname === "/dashboard" && (
+              <div>
+                <div className="page-eyebrow">GatiHire Client Portal</div>
+                <div className="page-heading">Overview</div>
+              </div>
+            )}
+          </div>
+
+          <div className="topbar-right">
+            <Link href="/dashboard/jobs/new" style={{
+              display: "inline-flex", alignItems: "center", gap: "6px",
+              padding: "7px 14px", background: "var(--gold)", borderRadius: "var(--r)",
+              color: "var(--ink)", fontSize: "12px", fontWeight: 600, textDecoration: "none",
+              fontFamily: "var(--font-body)"
+            }}>
+              + Post a Job
+            </Link>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="content page-enter">{children}</div>
+      </div>
     </div>
   )
 }

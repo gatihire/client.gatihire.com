@@ -1,8 +1,8 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { createContext, useCallback, useContext, useMemo } from "react"
 
-type Theme = "light" | "dark"
+type Theme = "light"
 
 type ThemeContextValue = {
   theme: Theme
@@ -12,50 +12,22 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-const STORAGE_KEY = "truckinzy:theme"
-
-function applyTheme(theme: Theme) {
-  const root = document.documentElement
-  if (theme === "dark") root.classList.add("dark")
-  else root.classList.remove("dark")
+function applyTheme() {
+  document.documentElement.classList.remove("dark")
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light")
+  const theme: Theme = "light"
 
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY)
-      const initial: Theme = stored === "dark" ? "dark" : "light"
-      setThemeState(initial)
-      applyTheme(initial)
-    } catch {
-      applyTheme("light")
-    }
-  }, [])
-
-  const setTheme = useCallback((next: Theme) => {
-    setThemeState(next)
-    applyTheme(next)
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next)
-    } catch {
-    }
+  const setTheme = useCallback(() => {
+    applyTheme()
   }, [])
 
   const toggleTheme = useCallback(() => {
-    setThemeState((curr) => {
-      const next: Theme = curr === "dark" ? "light" : "dark"
-      applyTheme(next)
-      try {
-        window.localStorage.setItem(STORAGE_KEY, next)
-      } catch {
-      }
-      return next
-    })
+    applyTheme()
   }, [])
 
-  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [setTheme, theme, toggleTheme])
+  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [setTheme, toggleTheme])
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 
