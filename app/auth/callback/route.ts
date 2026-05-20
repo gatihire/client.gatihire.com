@@ -5,7 +5,10 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
   const next = requestUrl.searchParams.get("returnTo") || "/dashboard"
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin
+  
+  // Use requestUrl.origin as the primary source of truth for the redirect.
+  // This ensures we stay on the same domain (client.gatihire.com vs localhost)
+  const origin = requestUrl.origin
 
   if (code) {
     // Create base response. Supabase client will attach cookies to this.
