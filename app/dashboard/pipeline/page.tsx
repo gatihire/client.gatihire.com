@@ -5,12 +5,12 @@ import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 
 const STAGES = [
-  { id: "new", label: "New", color: "var(--blue)", bg: "var(--blue-bg)", border: "var(--blue-border)" },
-  { id: "screening", label: "Screening", color: "var(--gold)", bg: "var(--gold-bg)", border: "var(--gold-border)" },
-  { id: "interview", label: "Interview", color: "var(--violet)", bg: "var(--violet-bg)", border: "rgba(167,139,250,0.2)" },
-  { id: "offer", label: "Offer", color: "var(--blue)", bg: "var(--blue-bg)", border: "var(--blue-border)" },
-  { id: "hired", label: "Hired ✓", color: "var(--green)", bg: "var(--green-bg)", border: "var(--green-border)" },
-  { id: "rejected", label: "Rejected", color: "var(--rose)", bg: "var(--rose-bg)", border: "var(--rose-border)" },
+  { id: "new", label: "New applies", tint: "#d97706", bg: "var(--gold-bg)", border: "var(--gold-border)", textColor: "var(--gold)" },
+  { id: "screening", label: "Screening", tint: "#3b82f6", bg: "var(--blue-bg)", border: "var(--blue-border)", textColor: "var(--blue)" },
+  { id: "interview", label: "Interview", tint: "#a78bfa", bg: "rgba(167,139,250,0.1)", border: "rgba(167,139,250,0.25)", textColor: "#a78bfa" },
+  { id: "offer", label: "Offer", tint: "#22c55e", bg: "var(--green-bg)", border: "var(--green-border)", textColor: "var(--green)" },
+  { id: "hired", label: "Hired", tint: "#16a34a", bg: "rgba(22,163,74,0.1)", border: "rgba(22,163,74,0.25)", textColor: "#16a34a" },
+  { id: "rejected", label: "Rejected", tint: "#f43f5e", bg: "var(--rose-bg)", border: "var(--rose-border)", textColor: "var(--rose)" },
 ]
 
 export default function PipelinePage() {
@@ -22,6 +22,7 @@ export default function PipelinePage() {
   const [selectedApp, setSelectedApp] = useState<any>(null)
   const [note, setNote] = useState("")
   const [savingNote, setSavingNote] = useState(false)
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban")
 
   const getToken = async () => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -34,9 +35,7 @@ export default function PipelinePage() {
       const res = await fetch("/api/client/jobs", { headers: { Authorization: `Bearer ${token}` } })
       const d = await res.json()
       setJobs(d.jobs || [])
-      if ((d.jobs || []).length > 0) {
-        setSelectedJob(d.jobs[0])
-      }
+      if ((d.jobs || []).length > 0) setSelectedJob(d.jobs[0])
       setLoading(false)
     }
     load()
@@ -87,133 +86,203 @@ export default function PipelinePage() {
     else stageMap["new"].push(a)
   })
 
-  if (loading) return <div style={{ color: "var(--muted)", fontSize: "13px" }}>Loading…</div>
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 0", color: "var(--dim)", fontSize: 13 }}>
+      Loading pipeline…
+    </div>
+  )
 
   if (jobs.length === 0) return (
     <div style={{
-      textAlign: "center", padding: "100px 20px",
-      background: "var(--ink2)", border: "1px dashed var(--line2)",
-      borderRadius: "var(--r2)", display: "flex", flexDirection: "column", alignItems: "center",
-      marginTop: "20px"
+      textAlign: "center", padding: "80px 20px",
+      background: "#fff", border: "1px dashed var(--line2)", borderRadius: 14,
+      display: "flex", flexDirection: "column", alignItems: "center", marginTop: 20
     }}>
       <div style={{
-        width: "64px", height: "64px", borderRadius: "16px",
-        background: "var(--ink3)", border: "1px solid var(--line)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: "24px", marginBottom: "20px"
+        width: 60, height: 60, borderRadius: 14, background: "var(--gold-bg)",
+        border: "1px solid var(--gold-border)", display: "flex", alignItems: "center",
+        justifyContent: "center", fontSize: 26, marginBottom: 18
       }}>
         📋
       </div>
-      <div style={{ fontFamily: "var(--font-display)", fontSize: "22px", color: "var(--bright)", marginBottom: "8px" }}>Empty Pipeline</div>
-      <div style={{ fontSize: "13px", color: "var(--dim)", marginBottom: "32px", maxWidth: "340px", lineHeight: 1.5 }}>
+      <div style={{ fontSize: 18, fontWeight: 800, color: "var(--bright)", marginBottom: 8, letterSpacing: "-0.015em" }}>
+        Empty pipeline
+      </div>
+      <div style={{ fontSize: 13, color: "var(--dim)", marginBottom: 28, maxWidth: 360, lineHeight: 1.6 }}>
         You need an active mandate to track candidates. Create your first job posting to activate your hiring pipeline.
       </div>
-      <Link href="/dashboard/jobs/new" style={{ padding: "12px 28px", background: "var(--gold)", borderRadius: "var(--r)", color: "var(--ink)", fontWeight: 600, fontSize: "13px", textDecoration: "none", boxShadow: "0 4px 12px rgba(232,201,109,0.2)" }}>Create Mandate</Link>
+      <Link href="/dashboard/jobs/new" style={{
+        padding: "11px 28px", background: "var(--gold)", borderRadius: 9,
+        color: "#fff", fontWeight: 700, fontSize: 13, textDecoration: "none"
+      }}>
+        Post a job
+      </Link>
     </div>
   )
 
   return (
-    <div style={{ display: "flex", gap: "24px", height: "calc(100vh - 100px)" }}>
-      {/* Left Sidebar - Jobs List */}
-      <div style={{ width: "280px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "16px", borderRight: "1px solid var(--line)", paddingRight: "20px", overflowY: "auto" }}>
-        <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--bright)", margin: 0 }}>Pipeline</h2>
-        <div style={{ fontSize: "13px", color: "var(--secondary)", marginBottom: "8px" }}>Select a job to view its pipeline</div>
-        
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {jobs.map(job => (
-            <button key={job.id} onClick={() => setSelectedJob(job)} style={{
-              padding: "16px", borderRadius: "12px", cursor: "pointer", textAlign: "left",
-              border: "1px solid", transition: "all 0.2s", display: "flex", flexDirection: "column", gap: "6px",
-              background: selectedJob?.id === job.id ? "var(--ink)" : "var(--ink2)",
-              borderColor: selectedJob?.id === job.id ? "var(--blue-border)" : "var(--line)",
-              boxShadow: selectedJob?.id === job.id ? "0 4px 12px rgba(0,0,0,0.1)" : "none",
-            }}>
-              <div style={{ fontSize: "14px", fontWeight: 600, color: selectedJob?.id === job.id ? "var(--blue)" : "var(--bright)" }}>
-                {job.title}
-              </div>
-              <div style={{ fontSize: "12px", color: "var(--dim)", fontFamily: "var(--font-mono)" }}>
-                ID: {job.id.slice(0, 6).toUpperCase()}
-              </div>
-              <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                <span style={{ fontSize: "11px", color: "var(--secondary)", background: "var(--ink3)", padding: "2px 6px", borderRadius: "4px" }}>
-                  {job.status === "open" ? "Published" : "Closed"}
-                </span>
-              </div>
-            </button>
-          ))}
+    <div style={{ display: "flex", gap: 20, height: "calc(100vh - 108px)", overflow: "hidden" }}>
+
+      {/* Left: jobs selector */}
+      <div style={{
+        width: 256, flexShrink: 0, background: "#fff", border: "1px solid var(--line)",
+        borderRadius: 12, display: "flex", flexDirection: "column", overflow: "hidden"
+      }}>
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "var(--dim)", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+            Select mandate
+          </div>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
+          {jobs.map(job => {
+            const active = selectedJob?.id === job.id
+            return (
+              <button
+                key={job.id}
+                onClick={() => { setSelectedJob(job); setSelectedApp(null) }}
+                style={{
+                  width: "100%", padding: "11px 12px", borderRadius: 9, cursor: "pointer",
+                  textAlign: "left", border: "none", transition: "all 0.12s",
+                  background: active ? "var(--gold-bg)" : "transparent",
+                  display: "flex", flexDirection: "column", gap: 4,
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "var(--ink)" }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent" }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, color: active ? "var(--gold)" : "var(--bright)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {job.title}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10.5, color: "var(--dim)", fontFamily: "var(--font-mono)" }}>
+                    {String(job.id || "").slice(0, 6).toUpperCase()}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 99,
+                    background: job.status === "open" ? "var(--green-bg)" : "var(--ink3)",
+                    color: job.status === "open" ? "var(--green)" : "var(--dim)",
+                    border: `1px solid ${job.status === "open" ? "var(--green-border)" : "var(--line2)"}`
+                  }}>
+                    {job.status === "open" ? "Live" : "Closed"}
+                  </span>
+                </div>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* Main Kanban Board */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      {/* Center: Kanban board or List view */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {selectedJob && (
-          <div style={{ marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <h1 style={{ fontSize: "24px", fontWeight: 600, color: "var(--bright)", margin: "0 0 4px 0" }}>{selectedJob.title} Pipeline</h1>
-              <div style={{ fontSize: "14px", color: "var(--secondary)" }}>Total Candidates: {applicants.length}</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.015em" }}>
+                {selectedJob.title}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 2 }}>
+                {applicants.length} candidate{applicants.length !== 1 ? "s" : ""} in pipeline
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 4, background: "var(--ink)", border: "1px solid var(--line2)", borderRadius: 8, padding: 2 }}>
+              {(["kanban", "list"] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    padding: "5px 12px", borderRadius: 6, fontSize: 11.5, fontWeight: 600,
+                    cursor: "pointer", fontFamily: "var(--font-body)", border: "none",
+                    background: viewMode === mode ? "#fff" : "transparent",
+                    color: viewMode === mode ? "var(--bright)" : "var(--secondary)",
+                    transition: "all 0.12s"
+                  }}
+                >
+                  {mode === "kanban" ? "Kanban" : "List"}
+                </button>
+              ))}
             </div>
           </div>
         )}
 
         {appsLoading ? (
-          <div style={{ color: "var(--muted)", fontSize: "13px" }}>Loading pipeline...</div>
-        ) : (
-          <div style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "16px", alignItems: "flex-start", flex: 1 }}>
+          <div style={{ color: "var(--dim)", fontSize: 13, padding: "20px 0" }}>Loading…</div>
+        ) : viewMode === "kanban" ? (
+          <div style={{ display: "flex", gap: 12, overflowX: "auto", flex: 1, paddingBottom: 12, alignItems: "flex-start" }}>
             {STAGES.map(stage => (
-              <div key={stage.id} style={{ minWidth: "260px", width: "260px", flexShrink: 0, display: "flex", flexDirection: "column", height: "100%" }}>
-                {/* Column header */}
+              <div key={stage.id} style={{ minWidth: 230, width: 230, flexShrink: 0, display: "flex", flexDirection: "column" }}>
+                {/* Stage header */}
                 <div style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "12px 16px", borderRadius: "12px 12px 0 0",
-                  background: stage.bg, border: `1px solid ${stage.border}`, borderBottom: "none"
+                  padding: "9px 12px", background: "#fff",
+                  border: `1px solid var(--line)`, borderRadius: "10px 10px 0 0",
                 }}>
-                  <div style={{ fontSize: "13px", fontWeight: 600, color: stage.color, display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: stage.color }} />
-                    {stage.label}
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: 99, background: stage.tint }} />
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--bright)" }}>{stage.label}</span>
                   </div>
-                  <div style={{ fontSize: "12px", color: stage.color, background: "rgba(255,255,255,0.1)", padding: "2px 8px", borderRadius: "10px", fontWeight: 600 }}>
+                  <span style={{
+                    fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600,
+                    padding: "2px 7px", borderRadius: 99,
+                    background: stage.bg, color: stage.textColor, border: `1px solid ${stage.border}`
+                  }}>
                     {stageMap[stage.id].length}
-                  </div>
+                  </span>
                 </div>
 
                 {/* Cards */}
                 <div style={{
-                  flex: 1, padding: "12px",
-                  background: "var(--ink2)", border: `1px solid ${stage.border}`, borderTop: "none",
-                  borderRadius: "0 0 12px 12px", display: "flex", flexDirection: "column", gap: "12px",
-                  overflowY: "auto"
+                  flex: 1, padding: "8px", background: "var(--ink)",
+                  border: `1px solid var(--line)`, borderTop: "none",
+                  borderRadius: "0 0 10px 10px", display: "flex", flexDirection: "column",
+                  gap: 8, minHeight: 120, maxHeight: "calc(100vh - 240px)", overflowY: "auto"
                 }}>
                   {stageMap[stage.id].map(app => {
                     const name = app.candidates?.name || app.candidate_name || "Candidate"
                     const role = app.candidates?.current_role || ""
                     const initials = name.split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()
+                    const isSelected = selectedApp?.id === app.id
+
                     return (
                       <div
                         key={app.id}
                         onClick={() => { setSelectedApp(app); setNote(app.notes || "") }}
                         style={{
-                          background: "var(--ink)", border: "1px solid var(--line)",
-                          borderRadius: "8px", padding: "16px", cursor: "pointer",
-                          transition: "all 0.2s",
-                          borderColor: selectedApp?.id === app.id ? stage.color : "var(--line)",
-                          boxShadow: selectedApp?.id === app.id ? `0 0 0 1px ${stage.color}` : "0 2px 4px rgba(0,0,0,0.05)"
+                          background: "#fff",
+                          border: `1px solid ${isSelected ? stage.tint : "var(--line)"}`,
+                          borderRadius: 9, padding: "12px", cursor: "pointer",
+                          transition: "all 0.12s",
+                          boxShadow: isSelected ? `0 0 0 2px ${stage.bg}` : "0 1px 0 rgba(0,0,0,0.02)",
                         }}
                       >
-                        <div style={{ display: "flex", gap: "12px", alignItems: "flex-start", marginBottom: "12px" }}>
-                          <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: stage.bg, border: `1px solid ${stage.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", color: stage.color, fontWeight: 600, flexShrink: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
+                          <div style={{
+                            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                            background: stage.bg, border: `1px solid ${stage.border}`,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: 11, fontWeight: 700, color: stage.textColor
+                          }}>
                             {initials}
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: "14px", color: "var(--bright)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: "2px" }}>{name}</div>
-                            <div style={{ fontSize: "12px", color: "var(--secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{role || "No Role"}</div>
-                            <div style={{ fontSize: "11px", color: "var(--dim)", marginTop: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                {app.candidates?.location && <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>📍 {app.candidates.location}</span>}
-                                {app.candidates?.total_experience && <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>⏳ {app.candidates.total_experience}y</span>}
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--bright)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {name}
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {role || "—"}
                             </div>
                           </div>
                         </div>
+                        <div style={{ display: "flex", gap: 8, fontSize: 11, color: "var(--dim)" }}>
+                          {app.candidates?.location && <span>📍 {app.candidates.location}</span>}
+                          {app.candidates?.total_experience && <span>⏳ {app.candidates.total_experience}y</span>}
+                        </div>
                         {app.notes && (
-                          <div style={{ fontSize: "12px", color: "var(--secondary)", background: "var(--ink3)", padding: "8px 10px", borderRadius: "6px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", borderLeft: `2px solid ${stage.color}` }}>
+                          <div style={{
+                            marginTop: 8, fontSize: 11, color: "var(--secondary)",
+                            background: "var(--ink)", padding: "6px 9px", borderRadius: 6,
+                            display: "-webkit-box", WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical", overflow: "hidden",
+                            borderLeft: `2px solid ${stage.tint}`
+                          }}>
                             {app.notes}
                           </div>
                         )}
@@ -221,81 +290,196 @@ export default function PipelinePage() {
                     )
                   })}
                   {stageMap[stage.id].length === 0 && (
-                    <div style={{ textAlign: "center", padding: "40px 0", fontSize: "12px", color: "var(--dim)" }}>No candidates</div>
+                    <div style={{ textAlign: "center", padding: "30px 0", fontSize: 11.5, color: "var(--dim)" }}>
+                      No candidates
+                    </div>
                   )}
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
-
-      {/* Side panel */}
-      {selectedApp && (
-        <div style={{
-          position: "fixed", right: 0, top: 0, bottom: 0, width: "380px",
-          background: "var(--ink2)", borderLeft: "1px solid var(--line)",
-          padding: "24px 20px", overflowY: "auto", zIndex: 50, boxSizing: "border-box"
-        }}>
-          <button onClick={() => setSelectedApp(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--dim)", fontSize: "18px", marginBottom: "16px" }}>✕</button>
-
-          <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", marginBottom: "24px" }}>
-            <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "var(--ink3)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", color: "var(--secondary)", fontWeight: 600, flexShrink: 0 }}>
-              {(selectedApp.candidates?.name || "C").substring(0,2).toUpperCase()}
-            </div>
-            <div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--bright)", fontWeight: 600, marginBottom: "4px" }}>
-                {selectedApp.candidates?.name || "Candidate"}
-              </div>
-              <div style={{ fontSize: "13px", color: "var(--secondary)", display: "flex", alignItems: "center", gap: "6px" }}>
-                <span title={selectedApp.candidates?.current_role} style={{ maxWidth: "160px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{selectedApp.candidates?.current_role || "No role"}</span>
-                {selectedApp.candidates?.location && <span>· {selectedApp.candidates.location}</span>}
-              </div>
-              {selectedApp.candidates?.file_url && (
-                <a href={selectedApp.candidates.file_url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "var(--blue)", marginTop: "8px", textDecoration: "none", fontWeight: 500 }}>
-                  📄 View Resume
-                </a>
+        ) : (
+          /* List view */
+          <div style={{ flex: 1, overflow: "auto" }}>
+            <div style={{ display: "grid", gap: 8, paddingBottom: 12 }}>
+              {applicants.map(app => {
+                const name = app.candidates?.name || app.candidate_name || "Candidate"
+                const role = app.candidates?.current_role || ""
+                const stage = STAGES.find(s => s.id === (app.status || "new"))
+                return (
+                  <div
+                    key={app.id}
+                    onClick={() => { setSelectedApp(app); setNote(app.notes || "") }}
+                    style={{
+                      background: "#fff", border: `1px solid ${selectedApp?.id === app.id ? "var(--gold-border)" : "var(--line)"}`,
+                      borderRadius: 9, padding: "14px 16px", cursor: "pointer", transition: "all 0.12s",
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      boxShadow: selectedApp?.id === app.id ? "0 0 0 2px var(--gold-bg)" : "none"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                        background: stage?.bg, border: `1px solid ${stage?.border}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 12, fontWeight: 700, color: stage?.textColor
+                      }}>
+                        {name.substring(0, 1).toUpperCase()}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--bright)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {name}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: "var(--dim)", display: "flex", gap: 8, marginTop: 2 }}>
+                          <span>{role || "—"}</span>
+                          {app.candidates?.location && <span>📍 {app.candidates.location}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 99,
+                      background: stage?.bg, color: stage?.textColor, border: `1px solid ${stage?.border}`,
+                      whiteSpace: "nowrap", flexShrink: 0, marginLeft: 12
+                    }}>
+                      {stage?.label}
+                    </span>
+                  </div>
+                )
+              })}
+              {applicants.length === 0 && (
+                <div style={{ textAlign: "center", padding: "40px 0", color: "var(--dim)", fontSize: 12 }}>
+                  No candidates in pipeline
+                </div>
               )}
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Stage changer */}
-          <div style={{ marginBottom: "20px" }}>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>Move to stage</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {STAGES.map(s => (
-                <button key={s.id} onClick={() => moveStage(selectedApp.id, s.id)} style={{
-                  padding: "5px 12px", borderRadius: "20px", cursor: "pointer", fontSize: "11px",
-                  fontFamily: "var(--font-mono)", border: "1px solid",
-                  background: selectedApp.status === s.id ? s.bg : "var(--ink3)",
-                  borderColor: selectedApp.status === s.id ? s.border : "var(--line2)",
-                  color: selectedApp.status === s.id ? s.color : "var(--secondary)"
-                }}>{s.label}</button>
-              ))}
+      {/* Right: candidate detail panel */}
+      {selectedApp && (
+        <div style={{
+          width: 340, flexShrink: 0, background: "#fff",
+          border: "1px solid var(--line)", borderRadius: 12,
+          display: "flex", flexDirection: "column", overflow: "hidden"
+        }}>
+          {/* Header */}
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--bright)", letterSpacing: "-0.01em" }}>Candidate</div>
+            <button onClick={() => setSelectedApp(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--dim)", fontSize: 18, lineHeight: 1, padding: "0 2px" }}>×</button>
+          </div>
+
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+            {/* Avatar + name */}
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 18 }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 11, flexShrink: 0,
+                background: "var(--gold-bg)", border: "1px solid var(--gold-border)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 16, fontWeight: 800, color: "var(--gold)"
+              }}>
+                {(selectedApp.candidates?.name || "C").substring(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.015em" }}>
+                  {selectedApp.candidates?.name || "Candidate"}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--secondary)", marginTop: 2 }}>
+                  {selectedApp.candidates?.current_role || "No role"}
+                  {selectedApp.candidates?.location && ` · ${selectedApp.candidates.location}`}
+                </div>
+                {selectedApp.candidates?.file_url && (
+                  <a href={selectedApp.candidates.file_url} target="_blank" rel="noopener noreferrer" style={{
+                    display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5,
+                    color: "var(--gold)", marginTop: 6, textDecoration: "none", fontWeight: 600
+                  }}>
+                    📄 View resume →
+                  </a>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Contact */}
-          <div style={{ background: "var(--ink3)", border: "1px solid var(--line2)", borderRadius: "var(--r2)", padding: "14px 16px", marginBottom: "20px" }}>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>Contact</div>
-            {selectedApp.candidates?.phone && <div style={{ fontSize: "12px", color: "var(--blue)", marginBottom: "4px" }}>📞 {selectedApp.candidates.phone}</div>}
-            {selectedApp.candidates?.email && <div style={{ fontSize: "12px", color: "var(--blue)" }}>✉️ {selectedApp.candidates.email}</div>}
-            {!selectedApp.candidates?.phone && !selectedApp.candidates?.email && <div style={{ fontSize: "12px", color: "var(--muted)" }}>Contact not available</div>}
-          </div>
+            {/* Stage mover */}
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", color: "var(--dim)", textTransform: "uppercase", fontFamily: "var(--font-mono)", marginBottom: 8 }}>
+                Move to stage
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {STAGES.map(s => {
+                  const active = selectedApp.status === s.id
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => moveStage(selectedApp.id, s.id)}
+                      style={{
+                        padding: "4px 11px", borderRadius: 99, cursor: "pointer",
+                        fontSize: 11.5, fontWeight: 600, border: `1px solid ${active ? s.border : "var(--line2)"}`,
+                        background: active ? s.bg : "transparent",
+                        color: active ? s.textColor : "var(--secondary)",
+                        fontFamily: "var(--font-body)", transition: "all 0.1s"
+                      }}
+                    >
+                      {s.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
-          {/* Notes */}
-          <div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>Internal Notes</div>
-            <textarea value={note} onChange={e => setNote(e.target.value)} rows={5}
-              placeholder="Add notes about this candidate…"
-              style={{ width: "100%", padding: "10px 12px", background: "var(--ink3)", border: "1px solid var(--line2)", borderRadius: "var(--r)", color: "var(--bright)", fontSize: "12px", fontFamily: "var(--font-body)", outline: "none", resize: "vertical", boxSizing: "border-box" }} />
-            <button onClick={saveNote} disabled={savingNote} style={{
-              marginTop: "8px", width: "100%", padding: "9px", background: savingNote ? "var(--ink4)" : "var(--blue-bg)",
-              border: `1px solid var(--blue-border)`, borderRadius: "var(--r)", cursor: savingNote ? "not-allowed" : "pointer",
-              color: "var(--blue)", fontSize: "12px", fontFamily: "var(--font-mono)"
-            }}>
-              {savingNote ? "Saving…" : "Save Note"}
-            </button>
+            {/* Contact info */}
+            <div style={{ background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", marginBottom: 18 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", color: "var(--dim)", textTransform: "uppercase", fontFamily: "var(--font-mono)", marginBottom: 8 }}>
+                Contact
+              </div>
+              {selectedApp.candidates?.phone && (
+                <div style={{ fontSize: 12.5, color: "var(--bright)", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>📞</span> {selectedApp.candidates.phone}
+                </div>
+              )}
+              {selectedApp.candidates?.email && (
+                <div style={{ fontSize: 12.5, color: "var(--bright)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>✉️</span> {selectedApp.candidates.email}
+                </div>
+              )}
+              {!selectedApp.candidates?.phone && !selectedApp.candidates?.email && (
+                <div style={{ fontSize: 12, color: "var(--dim)" }}>Contact not available</div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", color: "var(--dim)", textTransform: "uppercase", fontFamily: "var(--font-mono)", marginBottom: 8 }}>
+                Internal notes
+              </div>
+              <textarea
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                rows={5}
+                placeholder="Add notes about this candidate…"
+                style={{
+                  width: "100%", padding: "10px 12px",
+                  background: "var(--ink)", border: "1px solid var(--line2)",
+                  borderRadius: 9, color: "var(--bright)", fontSize: 12.5,
+                  fontFamily: "var(--font-body)", outline: "none",
+                  resize: "vertical", boxSizing: "border-box"
+                }}
+              />
+              <button
+                onClick={saveNote}
+                disabled={savingNote}
+                style={{
+                  marginTop: 8, width: "100%", padding: "9px",
+                  background: savingNote ? "var(--ink3)" : "var(--gold)",
+                  border: "none", borderRadius: 8,
+                  cursor: savingNote ? "not-allowed" : "pointer",
+                  color: savingNote ? "var(--dim)" : "#fff",
+                  fontSize: 12.5, fontWeight: 600,
+                  fontFamily: "var(--font-body)", transition: "all 0.12s"
+                }}
+              >
+                {savingNote ? "Saving…" : "Save note"}
+              </button>
+            </div>
           </div>
         </div>
       )}

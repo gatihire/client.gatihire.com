@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import type { PropsWithChildren } from "react"
 import { BRAND_LOGO_URL, BRAND_NAME } from "@/lib/branding"
 import Link from "next/link"

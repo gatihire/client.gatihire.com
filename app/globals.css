@@ -56,73 +56,74 @@
 
 /* ═══════════════════════════════════════════════
    DESIGN SYSTEM — GATIHIRE CLIENT PORTAL
-   Aesthetic: Clean light · professional · crisp
-   Inspired by: Linear · Notion · Gusto · Rippling
+   Aesthetic: Modern operational SaaS · warm character
+   Inspired by: Rippling · Linear · Gusto · Bloomberg
+   Brand: Amber-orange (gati = speed) over warm off-white
 ═══════════════════════════════════════════════ */
 :root {
-  /* Surface hierarchy — whites & light grays */
-  --ink:   #ffffff;
-  --ink2:  #f8f9fb;
-  --ink3:  #f1f3f6;
-  --ink4:  #e8eaee;
-  --ink5:  #dde0e6;
+  /* Surface hierarchy — warm whites */
+  --ink:   #f9f8f6;   /* app paper bg */
+  --ink2:  #f2f0ec;   /* card alt / sidebar */
+  --ink3:  #eae8e3;   /* hover state */
+  --ink4:  #e0dcd5;   /* pressed */
+  --ink5:  #d4cfc8;   /* strong border alt */
 
   /* Borders */
-  --line:  #e3e6ea;
-  --line2: #d1d5db;
+  --line:  #e8e6e1;
+  --line2: #d8d4cc;
 
   /* Text hierarchy */
   --muted:     #9ba3af;
-  --dim:       #6b7280;
-  --secondary: #4b5563;
-  --primary:   #1f2937;
-  --bright:    #111827;
+  --dim:       #6e7889;
+  --secondary: #4a5163;
+  --primary:   #1e2230;
+  --bright:    #12151f;
   --white:     #ffffff;
 
-  /* Brand accent — indigo */
-  --gold:        #4f46e5;
-  --gold2:       #6366f1;
-  --gold-bg:     rgba(79,70,229,0.06);
-  --gold-border: rgba(79,70,229,0.18);
+  /* Brand accent — amber orange (gati = speed, Indian highway) */
+  --gold:        #d97706;
+  --gold2:       #f59e0b;
+  --gold-bg:     rgba(217,119,6,0.08);
+  --gold-border: rgba(217,119,6,0.22);
 
-  /* Teal / success tones */
+  /* Teal / info tones */
   --teal:        #0891b2;
-  --teal-bg:     rgba(8,145,178,0.06);
-  --teal-border: rgba(8,145,178,0.15);
+  --teal-bg:     rgba(8,145,178,0.07);
+  --teal-border: rgba(8,145,178,0.18);
 
   /* Blue */
   --blue:        #2563eb;
-  --blue-bg:     rgba(37,99,235,0.06);
-  --blue-border: rgba(37,99,235,0.15);
+  --blue-bg:     rgba(37,99,235,0.07);
+  --blue-border: rgba(37,99,235,0.18);
 
-  /* Green */
+  /* Green / ok */
   --green:        #16a34a;
-  --green-bg:     rgba(22,163,74,0.06);
-  --green-border: rgba(22,163,74,0.15);
+  --green-bg:     rgba(22,163,74,0.07);
+  --green-border: rgba(22,163,74,0.18);
 
   /* Amber / warning */
   --amber:        #d97706;
-  --amber-bg:     rgba(217,119,6,0.06);
-  --amber-border: rgba(217,119,6,0.15);
+  --amber-bg:     rgba(217,119,6,0.07);
+  --amber-border: rgba(217,119,6,0.18);
 
   /* Rose / error */
   --rose:        #dc2626;
-  --rose-bg:     rgba(220,38,38,0.06);
-  --rose-border: rgba(220,38,38,0.15);
+  --rose-bg:     rgba(220,38,38,0.07);
+  --rose-border: rgba(220,38,38,0.18);
 
   /* Violet */
   --violet:    #7c3aed;
-  --violet-bg: rgba(124,58,237,0.06);
+  --violet-bg: rgba(124,58,237,0.07);
 
   /* Radius */
-  --r:  6px;
+  --r:  7px;
   --r2: 10px;
-  --r3: 16px;
+  --r3: 14px;
 
   /* Typography */
-  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono:    'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-body:    'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -144,8 +145,8 @@ body::before { display: none; }
 
 /* ══ SIDEBAR ══ */
 .sidebar {
-  width: 220px;
-  min-width: 220px;
+  width: 228px;
+  min-width: 228px;
   background: #ffffff;
   border-right: 1px solid var(--line);
   display: flex;
@@ -393,7 +394,7 @@ body::before { display: none; }
   overflow-y: auto;
   overflow-x: hidden;
   padding: 24px 28px;
-  background: #f6f8fa;
+  background: var(--ink);
   scroll-behavior: smooth;
 }
 .content::-webkit-scrollbar { width: 4px; }

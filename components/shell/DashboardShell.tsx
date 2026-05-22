@@ -1,124 +1,90 @@
 "use client"
+/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 
-// ── SVG Icon Components ─────────────────────────────────────────────────────
-function IconSearch() {
+/* ── Icons ──────────────────────────────────────────────────── */
+function Icon({ path, size = 15 }: { path: React.ReactNode; size?: number }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-    </svg>
-  )
-}
-function IconUnlock() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-      <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-    </svg>
-  )
-}
-function IconBriefcase() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-    </svg>
-  )
-}
-function IconKanban() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="7" rx="1"/>
-    </svg>
-  )
-}
-function IconCreditCard() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-    </svg>
-  )
-}
-function IconBarChart() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-    </svg>
-  )
-}
-function IconLogOut() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-      <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-    </svg>
-  )
-}
-function IconKey() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-    </svg>
-  )
-}
-function IconAlertTriangle() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.8"
+      strokeLinecap="round" strokeLinejoin="round"
+      style={{ flex: "0 0 auto" }}>
+      {path}
     </svg>
   )
 }
 
-function IconChevronLeft() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 18 9 12 15 6"></polyline>
-    </svg>
-  )
-}
-function IconChevronRight() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="9 18 15 12 9 6"></polyline>
-    </svg>
-  )
-}
+const IcoHome     = () => <Icon path={<><path d="M4 20V10l8-7 8 7v10"/><path d="M9 20v-6h6v6"/></>} />
+const IcoJobs     = () => <Icon path={<><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>} />
+const IcoApplicants = () => <Icon path={<><path d="M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20c0-3 3-5 6-5s6 2 6 5M16 14a3 3 0 1 0 0-6M21 20c0-2.5-2-4-4.5-4.5"/></>} />
+const IcoDB       = () => <Icon path={<><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></>} />
+const IcoUnlock   = () => <Icon path={<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V8a5 5 0 0 1 9.6-2"/></>} />
+const IcoBilling  = () => <Icon path={<><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></>} />
+const IcoChevronL = () => <Icon path={<><polyline points="15 18 9 12 15 6"/></>} />
+const IcoChevronR = () => <Icon path={<><polyline points="9 18 15 12 9 6"/></>} />
+const IcoSignOut  = () => <Icon size={13} path={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>} />
+const IcoSettings = () => <Icon size={14} path={<><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8l2.8-2.8M17 7l2.8-2.8"/></>} />
 
-// ── Nav config ──────────────────────────────────────────────────────────────
-const NAV_SECTIONS = [
+/* ── Nav config ─────────────────────────────────────────────── */
+const NAV = [
   {
-    label: "DISCOVER",
+    section: "HIRING",
     items: [
-      { id: "search",   label: "Smart Search",      Icon: IconSearch,     href: "/dashboard/searches", match: (p: string) => p.startsWith("/dashboard/searches") },
-      { id: "unlocked", label: "Unlocked Profiles",  Icon: IconUnlock,     href: "/dashboard/unlocked", match: (p: string) => p.startsWith("/dashboard/unlocked") },
-    ]
+      {
+        id: "home",        label: "Home",              Icon: IcoHome,
+        href: "/dashboard",
+        match: (p: string) => p === "/dashboard",
+      },
+      {
+        id: "jobs",        label: "Jobs",              Icon: IcoJobs,
+        href: "/dashboard/jobs",
+        match: (p: string) => p.startsWith("/dashboard/jobs"),
+      },
+      {
+        id: "applicants",  label: "Applicants",        Icon: IcoApplicants,
+        href: "/dashboard/pipeline",
+        match: (p: string) => p.startsWith("/dashboard/pipeline"),
+      },
+    ],
   },
   {
-    label: "HIRING",
+    section: "TALENT",
     items: [
-      { id: "jobs",     label: "My Jobs",            Icon: IconBriefcase,  href: "/dashboard/jobs",     match: (p: string) => p.startsWith("/dashboard/jobs") },
-      { id: "pipeline", label: "Pipeline",           Icon: IconKanban,     href: "/dashboard/pipeline", match: (p: string) => p.startsWith("/dashboard/pipeline") },
-    ]
+      {
+        id: "database",    label: "Talent search",     Icon: IcoDB,
+        href: "/dashboard/searches",
+        match: (p: string) => p.startsWith("/dashboard/searches"),
+      },
+      {
+        id: "unlocked",    label: "Unlocked profiles", Icon: IcoUnlock,
+        href: "/dashboard/unlocked",
+        match: (p: string) => p.startsWith("/dashboard/unlocked"),
+      },
+    ],
   },
   {
-    label: "ACCOUNT",
+    section: "ACCOUNT",
     items: [
-      { id: "billing",  label: "Credits & Billing",  Icon: IconCreditCard, href: "/dashboard/billing",  match: (p: string) => p.startsWith("/dashboard/billing") },
-      { id: "home",     label: "Overview",           Icon: IconBarChart,   href: "/dashboard",          match: (p: string) => p === "/dashboard" },
-    ]
-  }
+      {
+        id: "billing",     label: "Credits & billing", Icon: IcoBilling,
+        href: "/dashboard/billing",
+        match: (p: string) => p.startsWith("/dashboard/billing"),
+      },
+    ],
+  },
 ]
 
+/* ── Shell ──────────────────────────────────────────────────── */
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router   = useRouter()
   const pathname = usePathname() || ""
+
+  const [collapsed,   setCollapsed]   = useState(false)
   const [menuOpen,    setMenuOpen]    = useState(false)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [credits,     setCredits]     = useState<{ job_post_credits: number; profile_unlock_credits: number } | null>(null)
   const [clientData,  setClientData]  = useState<any>(null)
   const [clientName,  setClientName]  = useState("")
@@ -128,7 +94,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const loadUserData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push("/auth/login"); return }
-
     const meta = (user.user_metadata as any) || {}
     setUserEmail(user.email || "")
     setAvatarUrl(meta.avatar_url || meta.picture || "")
@@ -149,9 +114,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => { loadUserData() }, [loadUserData])
 
   const initials = useMemo(() => {
-    const src = userEmail || "U"
-    return src.slice(0, 2).toUpperCase()
-  }, [userEmail])
+    const n = clientName || userEmail || "U"
+    return n.slice(0, 2).toUpperCase()
+  }, [clientName, userEmail])
 
   const signOut = async () => {
     await supabase.auth.signOut()
@@ -159,78 +124,198 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     router.refresh()
   }
 
+  // Current page label for topbar
+  const currentItem = NAV.flatMap(s => s.items).find(item => item.match(pathname))
+  const pageTitle = currentItem?.label || (pathname === "/dashboard" ? "Home" : "")
+
   const lowCredits = credits !== null && credits.profile_unlock_credits <= 2
 
+  const sideW = collapsed ? 64 : 228
+
   return (
-    <div style={{ display: "flex", flex: 1, width: "100%", height: "100vh", overflow: "hidden", background: "#f6f8fa" }}>
+    <div style={{
+      display: "flex", width: "100%", height: "100vh",
+      overflow: "hidden", background: "var(--ink)",
+    }}>
       {/* ── SIDEBAR ── */}
-      <aside className="sidebar" style={{ display: "flex", flexDirection: "column", width: isSidebarCollapsed ? 68 : 220, minWidth: isSidebarCollapsed ? 68 : 220, transition: "width 0.2s" }}>
-        {/* Toggle Button */}
+      <aside style={{
+        width: sideW, minWidth: sideW, flexShrink: 0,
+        background: "#ffffff",
+        borderRight: "1px solid var(--line)",
+        display: "flex", flexDirection: "column",
+        height: "100vh", position: "relative",
+        transition: "width 0.18s ease, min-width 0.18s ease",
+        zIndex: 2,
+      }}>
+
+        {/* Collapse toggle */}
         <button
-          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onClick={() => setCollapsed(v => !v)}
           style={{
-            position: "absolute", right: -12, top: 24, width: 24, height: 24,
-            background: "var(--ink2)", border: "1px solid var(--line)", borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-            color: "var(--secondary)", zIndex: 10, padding: 0
+            position: "absolute", right: -11, top: 22,
+            width: 22, height: 22,
+            background: "#fff", border: "1px solid var(--line)",
+            borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", color: "var(--muted)", zIndex: 10, padding: 0,
+            boxShadow: "0 1px 3px rgba(0,0,0,.08)",
           }}
         >
-          {isSidebarCollapsed ? <IconChevronRight /> : <IconChevronLeft />}
+          {collapsed ? <IcoChevronR /> : <IcoChevronL />}
         </button>
 
-        {/* Logo */}
-        <div className="logo-area" style={{ padding: isSidebarCollapsed ? "24px 10px 20px" : "24px 20px 20px", display: "flex", justifyContent: "center", overflow: "hidden" }}>
-          {isSidebarCollapsed ? (
-            <div className="logo-wordmark" style={{ fontSize: 16 }}>G<span>H</span></div>
-          ) : (
-            <div>
-              <div className="logo-wordmark">Gati<span>Hire</span></div>
-              <div className="logo-tagline">Client Portal</div>
+        {/* Logo area */}
+        <div style={{
+          padding: collapsed ? "18px 12px 16px" : "16px 14px 14px",
+          borderBottom: "1px solid var(--line)",
+          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between",
+        }}>
+          {collapsed ? (
+            <div style={{
+              width: 28, height: 28, borderRadius: 7, background: "var(--gold)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="15" height="15" viewBox="0 0 32 32" fill="none">
+                <path d="M7 21 L13 13 L13 18 L19 18 L19 13 L25 21"
+                  fill="none" stroke="#fff" strokeWidth="2.6"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="7" cy="21" r="1.6" fill="#fff"/>
+              </svg>
             </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 7, background: "var(--gold)",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              }}>
+                <svg width="15" height="15" viewBox="0 0 32 32" fill="none">
+                  <path d="M7 21 L13 13 L13 18 L19 18 L19 13 L25 21"
+                    fill="none" stroke="#fff" strokeWidth="2.6"
+                    strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="7" cy="21" r="1.6" fill="#fff"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: "var(--bright)", letterSpacing: "-0.02em" }}>
+                  gatihire<span style={{ color: "var(--gold)" }}>.</span>
+                </div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, color: "var(--muted)", letterSpacing: ".1em", textTransform: "uppercase", marginTop: 1 }}>
+                  Client Portal
+                </div>
+              </div>
+            </div>
+          )}
+          {!collapsed && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: ".06em",
+              color: "var(--muted)", padding: "2px 6px",
+              border: "1px solid var(--line)", borderRadius: 4,
+            }}>BETA</span>
           )}
         </div>
 
         {/* Company pill */}
-        {clientName && !isSidebarCollapsed && (
-          <div className="workspace-pill">
-            <div className="ws-icon">{clientName.slice(0, 2).toUpperCase()}</div>
-            <div>
-              <div className="ws-name">{clientName}</div>
-              <div className="ws-plan">Hiring Account</div>
+        {clientName && (
+          <div style={{
+            margin: collapsed ? "10px 6px 6px" : "10px 10px 6px",
+            padding: collapsed ? "8px" : "9px 10px",
+            background: "var(--ink2)", border: "1px solid var(--line)",
+            borderRadius: 9, display: "flex", alignItems: "center",
+            gap: 8, justifyContent: collapsed ? "center" : "flex-start",
+            cursor: "default",
+          }}>
+            <div style={{
+              width: 24, height: 24, borderRadius: 6, background: "var(--gold)",
+              color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+              fontWeight: 800, fontSize: 10, flexShrink: 0,
+            }}>
+              {clientName.slice(0, 2).toUpperCase()}
             </div>
+            {!collapsed && (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 12, fontWeight: 700, color: "var(--bright)",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {clientName}
+                </div>
+                <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>
+                  Workspace · Growth
+                </div>
+              </div>
+            )}
           </div>
-        )}
-        {clientName && isSidebarCollapsed && (
-           <div style={{ display: "flex", justifyContent: "center", margin: "10px 0" }}>
-             <div className="ws-icon">{clientName.slice(0, 2).toUpperCase()}</div>
-           </div>
         )}
 
         {/* Nav */}
-        <nav style={{ flex: 1, overflow: "auto", padding: "8px 0" }}>
-          {NAV_SECTIONS.map(section => (
-            <div key={section.label}>
-              {!isSidebarCollapsed && <div className="nav-group-label">{section.label}</div>}
+        <nav style={{ flex: 1, overflow: "auto", padding: "6px 0 8px" }}>
+          {NAV.map(section => (
+            <div key={section.section}>
+              {!collapsed && (
+                <div style={{
+                  padding: "12px 14px 4px",
+                  fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted)",
+                  textTransform: "uppercase", letterSpacing: ".1em", fontWeight: 700,
+                }}>
+                  {section.section}
+                </div>
+              )}
               {section.items.map(item => {
                 const active = item.match(pathname)
                 return (
                   <Link
                     key={item.id}
                     href={item.href}
-                    title={isSidebarCollapsed ? item.label : undefined}
-                    className={`nav-item${active ? " active" : ""}`}
-                    style={{ textDecoration: "none", justifyContent: isSidebarCollapsed ? "center" : "flex-start", padding: isSidebarCollapsed ? "10px" : undefined }}
+                    title={collapsed ? item.label : undefined}
+                    style={{
+                      display: "flex", alignItems: "center",
+                      gap: collapsed ? 0 : 9,
+                      padding: collapsed ? "9px" : "8px 10px",
+                      margin: collapsed ? "1px 8px" : "1px 8px",
+                      borderRadius: 8, cursor: "pointer",
+                      color: active ? "var(--gold)" : "var(--secondary)",
+                      fontWeight: active ? 700 : 500,
+                      fontSize: 13, textDecoration: "none",
+                      border: `1px solid ${active ? "var(--gold-border)" : "transparent"}`,
+                      background: active ? "var(--gold-bg)" : "transparent",
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      transition: "all 0.1s",
+                      position: "relative",
+                    }}
+                    onMouseEnter={e => {
+                      if (!active) {
+                        (e.currentTarget as HTMLElement).style.background = "var(--ink2)"
+                        ;(e.currentTarget as HTMLElement).style.color = "var(--primary)"
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!active) {
+                        (e.currentTarget as HTMLElement).style.background = "transparent"
+                        ;(e.currentTarget as HTMLElement).style.color = "var(--secondary)"
+                      }
+                    }}
                   >
-                    <span className="nav-icon"><item.Icon /></span>
-                    {!isSidebarCollapsed && (
-                      <>
-                        {item.label}
-                        {item.id === "billing" && credits && (
-                          <span className="nav-badge">
-                            {credits.profile_unlock_credits + credits.job_post_credits}
-                          </span>
-                        )}
-                      </>
+                    {/* Active indicator bar */}
+                    {active && !collapsed && (
+                      <span style={{
+                        position: "absolute", left: -8, top: 8, bottom: 8,
+                        width: 2.5, background: "var(--gold)", borderRadius: 99,
+                      }} />
+                    )}
+                    <item.Icon />
+                    {!collapsed && (
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                    )}
+                    {/* Credits badge on billing */}
+                    {!collapsed && item.id === "billing" && credits && (
+                      <span style={{
+                        fontFamily: "var(--font-mono)", fontSize: 9.5, fontWeight: 700,
+                        background: lowCredits ? "var(--rose-bg)" : "var(--gold-bg)",
+                        color: lowCredits ? "var(--rose)" : "var(--gold)",
+                        border: `1px solid ${lowCredits ? "var(--rose-border)" : "var(--gold-border)"}`,
+                        padding: "1px 6px", borderRadius: 99,
+                      }}>
+                        {credits.profile_unlock_credits + credits.job_post_credits}
+                      </span>
                     )}
                   </Link>
                 )
@@ -240,44 +325,99 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Footer */}
-        <div className="sidebar-footer" style={{ padding: isSidebarCollapsed ? "12px 6px" : "12px" }}>
+        <div style={{
+          padding: collapsed ? "10px 8px" : "10px 10px",
+          borderTop: "1px solid var(--line)",
+        }}>
+          {/* Settings link */}
+          {!collapsed && (
+            <Link href="/dashboard/profile" style={{
+              display: "flex", alignItems: "center", gap: 9,
+              padding: "8px 10px", borderRadius: 8, marginBottom: 6,
+              color: "var(--muted)", fontSize: 13, fontWeight: 500,
+              textDecoration: "none", transition: "all 0.1s",
+            }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--ink2)"; (e.currentTarget as HTMLElement).style.color = "var(--primary)" }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--muted)" }}
+            >
+              <IcoSettings /> Settings
+            </Link>
+          )}
+
+          {/* User row */}
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setMenuOpen(v => !v)}
-              className="user-row"
-              style={{ width: "100%", background: "none", border: "none", cursor: "pointer", justifyContent: isSidebarCollapsed ? "center" : "flex-start", padding: isSidebarCollapsed ? "8px 0" : undefined }}
+              style={{
+                width: "100%", background: "var(--ink2)", border: "1px solid var(--line)",
+                borderRadius: 9, cursor: "pointer",
+                display: "flex", alignItems: "center",
+                gap: 8, padding: collapsed ? "8px" : "8px 10px",
+                justifyContent: collapsed ? "center" : "flex-start",
+                transition: "border-color 0.1s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--line2)" }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--line)" }}
             >
-              <div className="user-av" style={{ margin: isSidebarCollapsed ? 0 : undefined }}>
+              {/* Avatar */}
+              <div style={{
+                width: 28, height: 28, borderRadius: 99, flexShrink: 0,
+                background: avatarUrl ? "transparent" : "var(--gold-bg)",
+                border: "1px solid var(--gold-border)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--gold)",
+                overflow: "hidden",
+              }}>
                 {avatarUrl
-                  ? <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                  ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : initials
                 }
               </div>
-              {!isSidebarCollapsed && (
-                <div style={{ textAlign: "left" }}>
-                  <div className="user-name">{clientName || "My Account"}</div>
-                  <div className="user-role">{userEmail}</div>
+              {!collapsed && (
+                <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--bright)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {clientName || "My account"}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {userEmail}
+                  </div>
                 </div>
               )}
             </button>
 
+            {/* Dropdown */}
             {menuOpen && (
               <div style={{
-                position: "absolute", bottom: "100%", left: 0, right: 0, marginBottom: "4px",
-                background: "#ffffff", border: "1px solid #eaecf0", borderRadius: "var(--r2)",
-                padding: "6px", zIndex: 50,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.1)"
+                position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
+                background: "#fff", border: "1px solid var(--line)", borderRadius: 10,
+                padding: 6, zIndex: 50,
+                boxShadow: "0 8px 24px -4px rgba(0,0,0,.12)",
               }}>
+                <Link href="/dashboard/profile" style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "8px 10px", borderRadius: 7, textDecoration: "none",
+                  color: "var(--secondary)", fontSize: 12.5, fontWeight: 500,
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--ink2)" }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <IcoSettings /> Profile &amp; settings
+                </Link>
+                <div style={{ height: 1, background: "var(--line)", margin: "4px 0" }} />
                 <button
                   onClick={signOut}
                   style={{
-                    display: "flex", alignItems: "center", gap: "8px",
-                    width: "100%", padding: "8px 10px", background: "none", border: "none",
-                    cursor: "pointer", color: "var(--rose)", fontSize: "12px", borderRadius: "var(--r)",
-                    fontFamily: "var(--font-body)"
+                    display: "flex", alignItems: "center", gap: 8,
+                    width: "100%", padding: "8px 10px", background: "none",
+                    border: "none", cursor: "pointer", color: "var(--rose)",
+                    fontSize: 12.5, borderRadius: 7, fontFamily: "var(--font-body)",
+                    fontWeight: 500,
                   }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--rose-bg)" }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
                 >
-                  <IconLogOut /> Sign Out
+                  <IcoSignOut /> Sign out
                 </button>
               </div>
             )}
@@ -286,41 +426,66 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ── MAIN ── */}
-      <div className="main">
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Topbar */}
-        <div className="topbar">
-          <div className="topbar-left">
-            {NAV_SECTIONS.flatMap(s => s.items).map(item =>
-              item.match(pathname) ? (
-                <div key={item.id}>
-                  <div className="page-eyebrow">GatiHire Client Portal</div>
-                  <div className="page-heading">{item.label}</div>
-                </div>
-              ) : null
-            )}
-            {pathname === "/dashboard" && (
-              <div>
-                <div className="page-eyebrow">GatiHire Client Portal</div>
-                <div className="page-heading">Overview</div>
+        <header style={{
+          display: "flex", alignItems: "center", gap: 14,
+          padding: "0 24px", height: 52,
+          borderBottom: "1px solid var(--line)",
+          background: "#fff", flexShrink: 0,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted)",
+              textTransform: "uppercase", letterSpacing: ".12em",
+            }}>
+              GatiHire Client Portal
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--bright)", letterSpacing: "-0.02em" }}>
+              {pageTitle}
+            </div>
+          </div>
+
+          {/* Topbar actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Credits indicator */}
+            {credits && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 10px",
+                background: lowCredits ? "var(--rose-bg)" : "var(--gold-bg)",
+                border: `1px solid ${lowCredits ? "var(--rose-border)" : "var(--gold-border)"}`,
+                borderRadius: 7, fontSize: 11.5, fontWeight: 600,
+                color: lowCredits ? "var(--rose)" : "var(--gold)",
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/>
+                  <path d="M7 11V8a5 5 0 0 1 9.6-2" strokeLinecap="round"/>
+                </svg>
+                {credits.profile_unlock_credits} unlocks
               </div>
             )}
-          </div>
-
-          <div className="topbar-right">
             <Link href="/dashboard/jobs/new" style={{
-              display: "inline-flex", alignItems: "center", gap: "6px",
-              padding: "7px 14px", background: "var(--gold)", borderRadius: "var(--r)",
-              color: "var(--ink)", fontSize: "12px", fontWeight: 600, textDecoration: "none",
-              fontFamily: "var(--font-body)"
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "7px 14px", background: "var(--bright)",
+              borderRadius: 7, color: "#fff", fontSize: 12.5, fontWeight: 700,
+              textDecoration: "none",
             }}>
-              + Post a Job
+              + Post a job
             </Link>
           </div>
-        </div>
+        </header>
 
-        {/* Content */}
+        {/* Page content */}
         <div className="content page-enter">
-          <Suspense fallback={<div style={{ color: "var(--muted)", fontSize: "12px", fontFamily: "var(--font-mono)", padding: "40px" }}>LOADING...</div>}>
+          <Suspense fallback={
+            <div style={{
+              color: "var(--muted)", fontFamily: "var(--font-mono)",
+              fontSize: 11, padding: "40px", letterSpacing: ".08em",
+            }}>
+              LOADING…
+            </div>
+          }>
             {children}
           </Suspense>
         </div>

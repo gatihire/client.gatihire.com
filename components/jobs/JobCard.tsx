@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link"
 import type { Job } from "@/lib/types"
 import { Badge } from "@/components/ui/Badge"

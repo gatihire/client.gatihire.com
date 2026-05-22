@@ -570,10 +570,7 @@ export function JobsBoardClient({
     }
   }
 
-  useEffect(() => {
-    fetchJobsPage()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
+  const depsKey = [
     appliedQ,
     appliedLocation,
     appliedSkills.join(","),
@@ -591,7 +588,12 @@ export function JobsBoardClient({
     candidate?.desired_role || "",
     Array.isArray((candidate as any)?.preferred_roles) ? String(((candidate as any).preferred_roles as unknown[]).join(",")) : "",
     candidate?.updated_at || ""
-  ])
+  ].join("|")
+
+  useEffect(() => {
+    fetchJobsPage()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [depsKey])
 
   const disableProfileRoleFilter = () => {
     const uid = (session as any)?.user?.id ? String((session as any).user.id) : ""

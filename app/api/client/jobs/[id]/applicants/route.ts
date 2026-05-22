@@ -17,8 +17,15 @@ export async function GET(
   const { data: applicants, error } = await supabaseAdmin
     .from("applications")
     .select(`
-      id, status, applied_at, notes,
-      candidates (id, name, email, phone, current_role, location, total_experience, technical_skills, file_url)
+      id, status, applied_at, notes, source, match_score,
+      candidates (
+        id, name, email, phone, current_role, current_company, location, total_experience,
+        desired_role, preferred_location, current_salary, expected_salary, notice_period,
+        highest_qualification, degree, specialization, university, education_year,
+        summary, linkedin_profile, portfolio_url, github_profile,
+        technical_skills, soft_skills, languages_known, certifications,
+        file_name, file_url, file_size, file_type
+      )
     `)
     .eq("job_id", params.id)
     .order("applied_at", { ascending: false })

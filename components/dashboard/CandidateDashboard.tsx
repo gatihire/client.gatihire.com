@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { Application, Candidate } from "@/lib/types"
 import { useSupabaseSession } from "@/lib/useSupabaseSession"
@@ -26,28 +26,13 @@ export function CandidateDashboard() {
 
   const email = useMemo(() => session?.user.email || "", [session])
 
-  const load = async (opts?: { force?: boolean }) => {
+  const load = useCallback(async ({ force = false } = {}) => {
     if (!accessToken) return
-    const force = Boolean(opts?.force)
-    const profileCacheKey = `boardapp:candidateProfile:${sessionUserId || "anon"}`
-    const appsCacheKey = `boardapp:applications:${sessionUserId || "anon"}`
-    if (!force) {
-      const cachedProfile = peekSessionCache<any>(profileCacheKey)
-      const cachedApps = peekSessionCache<any>(appsCacheKey)
-      if (cachedProfile) setCandidate(cachedProfile.candidate || null)
-      if (cachedApps) setApps(cachedApps.applications || [])
-      if (cachedProfile && cachedApps) {
-        setBusy(false)
-        return
-      }
-    }
     setBusy(true)
-    setError(null)
+    setError("")
     try {
-      if (force) {
-        invalidateSessionCache(profileCacheKey)
-        invalidateSessionCache(appsCacheKey)
-      }
+      const profileCacheKey = `candidate_profile_${accessToken}`
+      const appsCacheKey = `candidate_apps_${accessToken}`
 
       const [pJson, aJson] = await Promise.all([
         cachedFetchJson<any>(
@@ -71,12 +56,11 @@ export function CandidateDashboard() {
     } finally {
       setBusy(false)
     }
-  }
+  }, [accessToken])
 
   useEffect(() => {
-    if (!accessToken) return
     load()
-  }, [accessToken])
+  }, [load])
 
   if (loading) {
     return (

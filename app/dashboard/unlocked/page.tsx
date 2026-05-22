@@ -57,7 +57,7 @@ export default function UnlockedPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
           <div style={{ fontFamily: "var(--font-display)", fontSize: "22px", color: "var(--bright)", fontWeight: 500 }}>Unlocked Profiles</div>
-          <div style={{ fontSize: "12px", color: "var(--dim)", marginTop: "4px" }}>Candidates you've unlocked full contact details for</div>
+          <div style={{ fontSize: "12px", color: "var(--dim)", marginTop: "4px" }}>Candidates you&apos;ve unlocked full contact details for</div>
         </div>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--secondary)" }}>
           {profiles.length} profile{profiles.length !== 1 ? "s" : ""} unlocked
@@ -86,7 +86,7 @@ export default function UnlockedPage() {
           </div>
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ color: "var(--dim)", fontSize: "13px", padding: "40px 0", textAlign: "center" }}>No profiles match "{search}"</div>
+        <div style={{ color: "var(--dim)", fontSize: "13px", padding: "40px 0", textAlign: "center" }}>No profiles match &ldquo;{search}&rdquo;</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {filtered.map(p => {
