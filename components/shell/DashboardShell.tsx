@@ -120,8 +120,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    router.push("/auth/login")
-    router.refresh()
+    window.location.href = "/auth/login"
   }
 
   // Current page label for topbar

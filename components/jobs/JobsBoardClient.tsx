@@ -760,6 +760,7 @@ export function JobsBoardClient({
     setCandidate(null)
     invalidateSessionCache("boardapp:candidateProfile:", { prefix: true })
     invalidateSessionCache("boardapp:jobsSearch:", { prefix: true })
+    window.location.href = "/auth/login"
   }
 
   const updateCandidate = async (patch: Partial<Candidate>) => {
