@@ -1,21 +1,8 @@
 "use client"
+
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Unlock, Loader2, Sparkles, FileText } from "lucide-react"
-import type { Candidate } from "@/components/dashboard/search-helpers"
 
-interface Props {
-  candidate: Candidate
-  onClose: () => void
-  detailsCache: React.MutableRefObject<Record<string, { work_experience: any[]; education: any[] }>>
-  aiAnalysis?: string
-  unlocking?: boolean
-  onUnlock?: () => void
-}
-
-function IconBack() {
-  return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>)
-}
 function IconClose() {
   return (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>)
 }
@@ -34,13 +21,41 @@ function IconLinkedIn() {
 function IconFile() {
   return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>)
 }
+function IconLock() {
+  return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>)
+}
+function IconSparkle() {
+  return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/></svg>)
+}
+function IconExpand() {
+  return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>)
+}
 
-export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, aiAnalysis, unlocking, onUnlock }: Props) {
-  const [activeTab, setActiveTab] = useState<"profile" | "resume" | "activity" | "notes">("profile")
+function formatBoldText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <span key={i} style={{ fontWeight: 700, color: "#065f46", background: "#d1fae5", padding: "1px 5px", borderRadius: 4 }}>{part.slice(2, -2)}</span>
+    }
+    return part
+  })
+}
+
+export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, aiAnalysis, unlocking, onUnlock }: {
+  candidate: any
+  onClose: () => void
+  detailsCache: React.MutableRefObject<Record<string, { work_experience: any[]; education: any[] }>>
+  aiAnalysis?: string
+  unlocking?: boolean
+  onUnlock?: () => void
+}) {
+  const [activeTab, setActiveTab] = useState<"profile" | "resume">("profile")
   const [workExperience, setWorkExperience] = useState<any[]>([])
   const [education, setEducation] = useState<any[]>([])
-  const [loadingDetails, setLoadingDetails] = useState(false)
+  const [loadingDetails, setLoadingDetails] = useState(true)
   const [resumeExpanded, setResumeExpanded] = useState(false)
+
+  const isUnlocked = candidate.is_unlocked
 
   useEffect(() => {
     if (!candidate?.id) return
@@ -48,6 +63,7 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
     if (cached) {
       setWorkExperience(cached.work_experience)
       setEducation(cached.education)
+      setLoadingDetails(false)
       return
     }
     async function fetchDetails() {
@@ -76,9 +92,11 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
     ...(Array.isArray(candidate.soft_skills) ? candidate.soft_skills : []),
   ]
   const initials = (candidate.name || candidate.initials || "U").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-  const whatsappMsg = encodeURIComponent(`Hi ${candidate.name || ""}, I came across your profile and wanted to connect regarding a potential opportunity. Would you be available for a quick discussion?`)
+  const displayName = isUnlocked ? (candidate.name || "Unknown") : (candidate.initials || "Locked")
+
+  const whatsappMsg = encodeURIComponent(`Hi ${candidate.name || ""}, I came across your profile and wanted to discuss a potential opportunity. Would you be available for a quick discussion?`)
   const whatsappUrl = candidate.phone ? `https://wa.me/${candidate.phone.replace(/[^0-9]/g, "")}?text=${whatsappMsg}` : "#"
-  const emailUrl = candidate.email ? `mailto:${candidate.email}` : "#"
+  const emailUrl = candidate.email ? `mailto:${candidate.email}?subject=${encodeURIComponent("Job Opportunity")}&body=${encodeURIComponent(`Hi ${candidate.name || ""},\n\nI came across your profile and wanted to discuss a potential opportunity.\n\nWould you be available for a quick discussion?\n\nBest regards`)}` : "#"
   const callUrl = candidate.phone ? `tel:${candidate.phone}` : "#"
 
   return (
@@ -100,15 +118,25 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
         <div style={{ padding: "28px 28px 20px", borderBottom: "1px solid var(--line)" }}>
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
             <div style={{
-              width: 64, height: 64, borderRadius: "50%", background: "#059669",
+              width: 64, height: 64, borderRadius: "50%", background: isUnlocked ? "#059669" : "var(--dim)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22, fontWeight: 800, color: "#fff", flexShrink: 0,
             }}>
-              {initials}
+              {isUnlocked ? initials : <IconLock />}
             </div>
             <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--bright)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                {candidate.is_unlocked ? candidate.name : candidate.initials}
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--bright)", margin: 0, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {displayName}
+                {!isUnlocked && (
+                  <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 99, background: "var(--gold-bg)", border: "1px solid var(--gold-border)", color: "var(--gold)", fontWeight: 600 }}>
+                    Locked
+                  </span>
+                )}
+                {candidate.match_score != null && (
+                  <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: 99, background: "var(--green-bg)", border: "1px solid var(--green-border)", color: "var(--green)", fontWeight: 700 }}>
+                    {candidate.match_score}% match
+                  </span>
+                )}
               </h3>
               <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4 }}>
                 {candidate.current_role || candidate.desired_role || "Professional"}
@@ -122,38 +150,35 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
               )}
             </div>
 
-            {/* Expectations card */}
-            <div style={{
-              background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 14px",
-              fontSize: 12, minWidth: 140, flexShrink: 0,
-            }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--dim)", fontWeight: 700, marginBottom: 8 }}>Expectations</div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ color: "var(--dim)" }}>Current</span>
-                <span style={{ fontWeight: 700, color: "var(--bright)" }}>{candidate.current_salary || "—"}</span>
+            {isUnlocked && (
+              <div style={{
+                background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 14px",
+                fontSize: 12, minWidth: 140, flexShrink: 0,
+              }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--dim)", fontWeight: 700, marginBottom: 8 }}>Expectations</div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ color: "var(--dim)" }}>Current</span>
+                  <span style={{ fontWeight: 700, color: "var(--bright)" }}>{candidate.current_salary || "—"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ color: "var(--dim)" }}>Expected</span>
+                  <span style={{ fontWeight: 700, color: "var(--gold)" }}>{candidate.expected_salary || "—"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--dim)" }}>Notice</span>
+                  <span style={{ fontWeight: 700, color: "var(--bright)" }}>{candidate.notice_period || "—"}</span>
+                </div>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ color: "var(--dim)" }}>Expected</span>
-                <span style={{ fontWeight: 700, color: "var(--gold)" }}>{candidate.expected_salary || "—"}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--dim)" }}>Notice</span>
-                <span style={{ fontWeight: 700, color: "var(--bright)" }}>{candidate.notice_period || "—"}</span>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Contact row — only shown when unlocked */}
-          {candidate.is_unlocked && (
+          {isUnlocked && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14, fontSize: 12, color: "var(--dim)" }}>
               {candidate.phone && (
                 <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconPhone /> {candidate.phone}</span>
               )}
               {candidate.email && (
                 <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconMail /> {candidate.email}</span>
-              )}
-              {candidate.location && (
-                <span>{candidate.location}</span>
               )}
               {candidate.linkedin_profile && (
                 <a href={candidate.linkedin_profile} target="_blank" rel="noopener" style={{ display: "flex", alignItems: "center", gap: 4, color: "#0A66C2", textDecoration: "none" }}>
@@ -163,62 +188,78 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
             </div>
           )}
 
-          {/* Unlock button or action buttons */}
-          {!candidate.is_unlocked ? (
-            <button
-              onClick={onUnlock}
-              disabled={unlocking}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%",
-                padding: "10px 0", marginTop: 14, background: unlocking ? "var(--ink)" : "var(--gold)", border: "none",
-                borderRadius: 10, color: unlocking ? "var(--dim)" : "#fff", fontWeight: 700, fontSize: 13,
-                cursor: unlocking ? "wait" : "pointer", fontFamily: "var(--font-body)"
-              }}
-            >
-              {unlocking ? <Loader2 size={16} /> : <Unlock size={16} />}
-              {unlocking ? "Unlocking..." : "Unlock Contact Details"}
-            </button>
-          ) : (
-            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-              <a href={whatsappUrl} target="_blank" rel="noopener" style={{
-                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8,
-                background: "#25D366", color: "#fff", fontSize: 12, fontWeight: 700, textDecoration: "none",
-              }}>
-                <IconWhatsApp /> WhatsApp
-              </a>
-              <a href={emailUrl} style={{
-                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8,
-                background: "#fff", color: "var(--secondary)", fontSize: 12, fontWeight: 600, textDecoration: "none", border: "1px solid var(--line)",
-              }}>
-                <IconMail /> Email
-              </a>
-              <a href={callUrl} style={{
-                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8,
-                background: "#fff", color: "var(--secondary)", fontSize: 12, fontWeight: 600, textDecoration: "none", border: "1px solid var(--line)",
-              }}>
-                <IconPhone /> Call
-              </a>
-              {candidate.file_url && (
-                <a href={candidate.file_url} target="_blank" rel="noopener" style={{
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            {isUnlocked ? (
+              <>
+                <a href={whatsappUrl} target="_blank" rel="noopener" style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8,
+                  background: "#25D366", color: "#fff", fontSize: 12, fontWeight: 700, textDecoration: "none",
+                }}>
+                  <IconWhatsApp /> WhatsApp
+                </a>
+                <a href={emailUrl} style={{
                   display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8,
                   background: "#fff", color: "var(--secondary)", fontSize: 12, fontWeight: 600, textDecoration: "none", border: "1px solid var(--line)",
                 }}>
-                  <IconFile /> Resume
+                  <IconMail /> Email
                 </a>
-              )}
-            </div>
-          )}
+                <a href={callUrl} style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8,
+                  background: "#fff", color: "var(--secondary)", fontSize: 12, fontWeight: 600, textDecoration: "none", border: "1px solid var(--line)",
+                }}>
+                  <IconPhone /> Call
+                </a>
+                {candidate.file_url && (
+                  <a href={candidate.file_url} target="_blank" rel="noopener" style={{
+                    display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8,
+                    background: "#fff", color: "var(--secondary)", fontSize: 12, fontWeight: 600, textDecoration: "none", border: "1px solid var(--line)",
+                  }}>
+                    <IconFile /> Resume
+                  </a>
+                )}
+              </>
+            ) : (
+              <button
+                onClick={onUnlock}
+                disabled={unlocking}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%",
+                  padding: "10px 0", background: unlocking ? "var(--ink)" : "var(--gold)", border: "none",
+                  borderRadius: 10, color: unlocking ? "var(--dim)" : "#fff", fontWeight: 700, fontSize: 13,
+                  cursor: unlocking ? "wait" : "pointer", fontFamily: "var(--font-body)",
+                }}
+              >
+                <IconLock /> {unlocking ? "Unlocking..." : "Unlock Contact Details · 1 credit"}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* ── Tab bar ── */}
+        {/* ── AI Match Analysis ── */}
+        {aiAnalysis && (
+          <div style={{ padding: "16px 28px", borderBottom: "1px solid var(--line)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+              <IconSparkle />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--dim)", fontWeight: 700 }}>AI Match Analysis</span>
+            </div>
+            <div style={{
+              padding: "12px 16px", borderRadius: 10, background: "#ecfdf5", border: "1px solid #a7f3d0",
+              fontSize: 12.5, color: "#065f46", lineHeight: 1.65,
+            }}>
+              {formatBoldText(aiAnalysis)}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab bar (Profile & Resume only) ── */}
         <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--line)", padding: "0 28px", flexShrink: 0 }}>
-          {(["profile", "resume", "activity", "notes"] as const).map(tab => (
+          {(["profile", "resume"] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               background: "none", border: "none", borderBottom: activeTab === tab ? "2px solid var(--gold)" : "2px solid transparent",
               padding: "10px 16px", cursor: "pointer", fontSize: 12, fontWeight: activeTab === tab ? 700 : 500,
               color: activeTab === tab ? "var(--bright)" : "var(--dim)", textTransform: "capitalize",
             }}>
-              {tab === "notes" ? "Notes & feedback" : tab}
+              {tab}
             </button>
           ))}
         </div>
@@ -229,17 +270,6 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
           {activeTab === "profile" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-              {/* AI Analysis */}
-              {aiAnalysis && (
-                <div style={{ padding: 14, background: "var(--gold-bg)", border: "1px solid var(--gold-border)", borderRadius: 10, fontSize: 12, color: "var(--gold)", lineHeight: 1.6 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, marginBottom: 6 }}>
-                    <Sparkles size={14} /> AI Analysis
-                  </div>
-                  {aiAnalysis}
-                </div>
-              )}
-
-              {/* Summary */}
               {candidate.summary && (
                 <div>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--dim)", fontWeight: 700, marginBottom: 8 }}>Summary</div>
@@ -247,7 +277,6 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
                 </div>
               )}
 
-              {/* Skills */}
               {skills.length > 0 && (
                 <div>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--dim)", fontWeight: 700, marginBottom: 8 }}>Skills</div>
@@ -261,7 +290,6 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
                 </div>
               )}
 
-              {/* Languages */}
               {Array.isArray(candidate.languages_known) && candidate.languages_known.length > 0 && (
                 <div>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--dim)", fontWeight: 700, marginBottom: 8 }}>Languages</div>
@@ -273,7 +301,6 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
                 </div>
               )}
 
-              {/* Experience */}
               <div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--dim)", fontWeight: 700, marginBottom: 10 }}>Experience</div>
                 {loadingDetails ? (
@@ -300,7 +327,6 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
                 )}
               </div>
 
-              {/* Education */}
               <div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--dim)", fontWeight: 700, marginBottom: 10 }}>Education</div>
                 {loadingDetails ? (
@@ -325,86 +351,129 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
                   <div style={{ fontSize: 12, color: "var(--dim)", padding: "8px 0" }}>No education data available</div>
                 )}
               </div>
+
+              {Array.isArray(candidate.certifications) && candidate.certifications.length > 0 && (
+                <div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--dim)", fontWeight: 700, marginBottom: 8 }}>Certifications</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {candidate.certifications.map((c: string, i: number) => (
+                      <span key={i} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid var(--line)", fontSize: 12, color: "var(--secondary)", background: "#fff" }}>{c}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === "resume" && (
             <div>
-              {candidate.file_url ? (
+              {!isUnlocked ? (
+                <div style={{
+                  textAlign: "center", padding: "60px 20px",
+                  background: "var(--ink)", border: "1px dashed var(--line2)", borderRadius: 12,
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
+                }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: "var(--gold-bg)", border: "1px solid var(--gold-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <IconLock />
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--bright)" }}>Unlock to view resume</div>
+                  <div style={{ fontSize: 12, color: "var(--dim)", maxWidth: 280, lineHeight: 1.5 }}>
+                    Unlock this profile to access the full resume, contact details, and more.
+                  </div>
+                  <button
+                    onClick={onUnlock}
+                    disabled={unlocking}
+                    style={{
+                      padding: "10px 22px", borderRadius: 9,
+                      background: unlocking ? "var(--ink)" : "var(--gold)", color: unlocking ? "var(--dim)" : "#fff",
+                      fontSize: 13, fontWeight: 700, border: unlocking ? "1px solid var(--line)" : "none",
+                      cursor: unlocking ? "wait" : "pointer", fontFamily: "var(--font-body)",
+                    }}
+                  >
+                    {unlocking ? "Unlocking..." : "Unlock profile · 1 credit"}
+                  </button>
+                </div>
+              ) : candidate.file_url ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <a href={candidate.file_url} target="_blank" rel="noopener" style={{
                       display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", flex: 1,
                       background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 10,
-                      fontSize: 13, fontWeight: 600, color: "var(--bright)", textDecoration: "none",
+                      textDecoration: "none", color: "var(--bright)",
                     }}>
                       <IconFile />
-                      {candidate.file_name || "Resume"}
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{candidate.file_name || "Resume"}</div>
+                        {candidate.file_size && <div style={{ fontSize: 11, color: "var(--dim)", marginTop: 1 }}>{(candidate.file_size / 1024).toFixed(0)} KB</div>}
+                      </div>
                       <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--gold)", fontWeight: 700 }}>Download</span>
                     </a>
-                    <button onClick={() => setResumeExpanded(true)} style={{
-                      display: "flex", alignItems: "center", gap: 6, padding: "14px 16px", borderRadius: 10,
-                      background: "#fff", border: "1px solid var(--line)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--secondary)", whiteSpace: "nowrap",
-                    }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
-                      Expand
+                    <button
+                      onClick={() => setResumeExpanded(true)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6, padding: "14px 16px", borderRadius: 10,
+                        background: "var(--gold)", border: "none", cursor: "pointer", fontSize: 12,
+                        fontWeight: 700, color: "#fff", whiteSpace: "nowrap", fontFamily: "var(--font-body)",
+                      }}
+                    >
+                      <IconExpand /> Expand
                     </button>
                   </div>
-                  <iframe src={candidate.file_url} style={{ width: "100%", height: "60vh", border: "1px solid var(--line)", borderRadius: 10 }} />
-                </div>
-              ) : (
-                <div style={{ textAlign: "center", padding: 40, color: "var(--dim)" }}>No resume uploaded</div>
-              )}
-
-              {resumeExpanded && candidate.file_url && (
-                <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setResumeExpanded(false)}>
-                  <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} />
-                  <div onClick={(e) => e.stopPropagation()} style={{
-                    position: "relative", width: "85vw", height: "90vh", background: "#fff", borderRadius: 16,
-                    boxShadow: "0 20px 60px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", overflow: "hidden",
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--line)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: "var(--bright)" }}>
-                        <IconFile /> {candidate.file_name || "Resume"} — {candidate.name || candidate.initials}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <a href={candidate.file_url} target="_blank" rel="noopener" style={{
-                          padding: "6px 14px", borderRadius: 8, background: "var(--gold)", color: "#fff",
-                          fontSize: 12, fontWeight: 700, textDecoration: "none",
-                        }}>Download</a>
-                        <button onClick={() => setResumeExpanded(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--dim)", padding: 4 }}>
-                          <IconClose />
-                        </button>
-                      </div>
-                    </div>
-                    <iframe src={candidate.file_url} style={{ flex: 1, width: "100%", border: "none" }} />
+                  <div style={{ border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", height: 500 }}>
+                    <iframe
+                      src={candidate.file_url}
+                      style={{ width: "100%", height: "100%", border: "none" }}
+                      title="Resume preview"
+                    />
                   </div>
                 </div>
+              ) : (
+                <div style={{ textAlign: "center", padding: "60px 0", color: "var(--dim)", fontSize: 13 }}>
+                  No resume uploaded
+                </div>
               )}
-            </div>
-          )}
-
-          {activeTab === "activity" && (
-            <div style={{ fontSize: 12, color: "var(--dim)", padding: 20, textAlign: "center" }}>
-              Activity log coming soon
-            </div>
-          )}
-
-          {activeTab === "notes" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <textarea
-                placeholder="Add a note about this candidate..."
-                rows={5}
-                style={{
-                  width: "100%", padding: "14px 16px", background: "#fff", border: "1px solid var(--line)", borderRadius: 10,
-                  color: "var(--bright)", fontSize: 13, boxSizing: "border-box", resize: "vertical",
-                  fontFamily: "var(--font-body)", lineHeight: 1.6, outline: "none",
-                }}
-              />
             </div>
           )}
         </div>
       </div>
+
+      {/* Fullscreen resume modal */}
+      {resumeExpanded && candidate.file_url && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => setResumeExpanded(false)}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} />
+          <div
+            style={{ position: "relative", width: "85vw", height: "90vh", background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--line)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: "var(--bright)" }}>
+                <IconFile /> {candidate.file_name || "Resume"} — {candidate.name || candidate.initials}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <a href={candidate.file_url} target="_blank" rel="noopener" style={{
+                  padding: "6px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 7,
+                  color: "var(--secondary)", fontSize: 12, fontWeight: 600, textDecoration: "none", cursor: "pointer",
+                }}>
+                  Open in new tab
+                </a>
+                <button onClick={() => setResumeExpanded(false)} style={{
+                  background: "none", border: "none", cursor: "pointer", color: "var(--dim)", padding: 4,
+                }}>
+                  <IconClose />
+                </button>
+              </div>
+            </div>
+            <iframe
+              src={candidate.file_url}
+              style={{ flex: 1, width: "100%", border: "none" }}
+              title="Resume fullscreen"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

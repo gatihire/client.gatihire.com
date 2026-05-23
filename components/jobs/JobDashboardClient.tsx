@@ -569,11 +569,11 @@ function MoveToModal({ stages, selectedCount, onMove, onClose }: {
 }
 
 /* ─────── Main Component ─────── */
-export function JobDashboardClient({ jobId, onClose }: { jobId: string; onClose?: () => void }) {
+export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: string; onClose?: () => void; initialTab?: "applicants" | "suggested" | "unlocked" }) {
   const router = useRouter()
   const [job, setJob] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<"applicants" | "suggested" | "unlocked">("applicants")
+  const [activeTab, setActiveTab] = useState<"applicants" | "suggested" | "unlocked">(initialTab || "applicants")
   const [stages, setStages] = useState<any[]>([])
   const [activeStage, setActiveStage] = useState<string | null>(null)
   const [stagesLoaded, setStagesLoaded] = useState(false)

@@ -18,16 +18,32 @@ export async function GET(request: NextRequest) {
 
   const jobIds = jobs.map(j => j.id)
 
-  const { data: appStats } = await supabaseAdmin
-    .from("applications")
-    .select("job_id, status")
-    .in("job_id", jobIds)
+  const [appStats, matchStats] = await Promise.all([
+    supabaseAdmin
+      .from("applications")
+      .select("job_id, status")
+      .in("job_id", jobIds),
+    supabaseAdmin
+      .from("job_match_runs")
+      .select("job_id, total_matches, last_matched_at")
+      .in("job_id", jobIds)
+  ])
+
+  const matchStatsMap = new Map((matchStats.data || []).map((m: any) => [m.job_id, m]))
 
   const jobsWithStats = jobs.map(job => {
-    const jobApps = (appStats || []).filter(a => a.job_id === job.id)
+    const jobApps = (appStats.data || []).filter((a: any) => a.job_id === job.id)
     const totalApplicants = jobApps.length
-    const newApplicants = jobApps.filter(a => a.status === "new" || a.status === "pending").length
-    return { ...job, totalApplicants, newApplicants }
+    const newApplicants = jobApps.filter((a: any) => a.status === "new" || a.status === "pending").length
+    const run = matchStatsMap.get(job.id)
+    return {
+      ...job,
+      totalApplicants,
+      newApplicants,
+      match_count: run?.total_matches || 0,
+      last_matched_at: run?.last_matched_at || null,
+      needs_matchmaking: !run || !run.total_matches
+    }
   })
 
   return NextResponse.json({ jobs: jobsWithStats })

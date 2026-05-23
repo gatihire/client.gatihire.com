@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 import { getClientContext, maskCandidate } from "@/lib/clientAuth"
-import { generateEmbedding } from "@/lib/embedding"
-import { applySidebarFilters } from "@/lib/scoring"
+import { searchRL } from "@/lib/rateLimit"
 
 // ── Candidate SELECT columns ─────────────────────────────────────────────────
 const CANDIDATE_SELECT = [
@@ -40,12 +39,15 @@ function buildWebsearchQuery(terms: string[], maxTerms = 15): string {
   return terms.slice(0, maxTerms).map(t => { const v = t.trim(); return v.includes(" ") ? `"${v}"` : v }).filter(Boolean).join(" OR ")
 }
 
-function sanitize(q: string): string { return q.replace(/[()]/g, " ").replace(/\s+/g, " ").trim() }
-function parseList(param: string | null): string[] { if (!param) return []; return param.split(",").map(s => s.trim()).filter(Boolean) }
-
 export async function POST(request: NextRequest) {
   const ctx = await getClientContext(request)
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Apply Rate Limiting
+  const { success } = await searchRL.limit(ctx.clientId)
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 })
+  }
 
   const body = await request.json().catch(() => ({}))
   const { query: q = "", offset = 0, limit = 20, filters = {} } = body
@@ -68,14 +70,14 @@ export async function POST(request: NextRequest) {
   if (filters.companies && filters.companies.length > 0) rpcFilters.companies = filters.companies
   if (filters.education && filters.education.length > 0) rpcFilters.education = filters.education
 
-  // Run RPC (fetch a large pool to score properly, like admin portal)
-  const { data, error } = await supabaseAdmin.rpc("search_candidates_v2", {
-    p_query_text: q.trim(),
+  // Run Hybrid Search RPC (Keyword Only)
+  const { data, error } = await supabaseAdmin.rpc("search_candidates_hybrid", {
+    p_query_text: buildWebsearchQuery(expandRoleVariants(q.trim())),
     p_query_embedding: null,
     p_match_threshold: 0,
     p_filters: rpcFilters,
-    p_limit: 500,
-    p_offset: 0
+    p_limit: limit,
+    p_offset: offset
   })
 
   if (error) {
@@ -83,22 +85,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  const total = data && data.length > 0 ? Number(data[0].total_count) : 0
+
   let results = (data || []).map((row: any) => {
     const rawCandidate = row.candidate_data
-    const finalScore = rawCandidate.match_score ? rawCandidate.match_score * 100 : 0
+    const finalScore = row.match_score * 100
     return { ...maskCandidate(rawCandidate, unlockedSet.has(rawCandidate.id)), match_score: Math.round(finalScore) }
   })
-  
-  // Sort by the match score
-  results.sort((a: any, b: any) => (b.match_score || 0) - (a.match_score || 0))
-  
-  // Apply JS sidebar filters
-  results = applySidebarFilters(results, filters)
 
-  const total = results.length
-  
-  // Apply pagination
-  const paginatedResults = results.slice(offset, offset + limit)
-
-  return NextResponse.json({ results: paginatedResults, total, offset })
+  return NextResponse.json({ results, total, offset })
 }

@@ -425,10 +425,10 @@ export default function SearchesPage() {
             <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.015em" }}>
-                  {totalCount.toLocaleString()} profiles found
+                  {totalCount >= 500 ? "500+ profiles found" : `${totalCount.toLocaleString()} profiles found`}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 2 }}>
-                  Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalCount)} of {totalCount}
+                  Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalCount)} {totalCount >= 500 ? "of 500+" : `of ${totalCount}`}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -472,9 +472,9 @@ export default function SearchesPage() {
                       <ArrowLeft size={13} /> Prev
                     </button>
                     <span style={{ fontSize: 12, color: "var(--dim)", fontFamily: "var(--font-mono)" }}>
-                      {(loadingMore || isWaitingForData) ? "Loading..." : `Page ${page} of ${totalPages}`}
+                      {(loadingMore || isWaitingForData) ? "Loading..." : `Page ${page} of ${Math.min(totalPages, 25)}`}
                     </span>
-                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages || loadingMore || isWaitingForData} style={{ ...pgBtn, display: "flex", alignItems: "center", gap: 4, opacity: page >= totalPages ? 0.4 : 1 }}>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= Math.min(totalPages, 25) || loadingMore || isWaitingForData} style={{ ...pgBtn, display: "flex", alignItems: "center", gap: 4, opacity: page >= Math.min(totalPages, 25) ? 0.4 : 1 }}>
                       Next <ArrowRight size={13} />
                     </button>
                   </div>

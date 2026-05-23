@@ -447,11 +447,12 @@ export function CandidateCard({ c, unlocking, onUnlock, onClick, aiAnalysis, sel
           </div>
         ) : aiAnalysis === undefined ? null : (
           /* Skeleton while AI analysis is generating */
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
-            <Sparkles size={12} color="#059669" />
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ width: "80%", height: 10, borderRadius: 4, background: "#bbf7d0", animation: "pulse 1.5s infinite" }} />
-              <div style={{ width: "55%", height: 10, borderRadius: 4, background: "#bbf7d0", animation: "pulse 1.5s infinite" }} />
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "12px 14px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
+            <Sparkles size={14} color="#059669" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
+              <div style={{ width: "90%", height: 8, borderRadius: 4, background: "#86efac", animation: "pulse 1.5s infinite" }} />
+              <div style={{ width: "75%", height: 8, borderRadius: 4, background: "#86efac", animation: "pulse 1.5s infinite", animationDelay: "0.2s" }} />
+              <div style={{ width: "40%", height: 8, borderRadius: 4, background: "#86efac", animation: "pulse 1.5s infinite", animationDelay: "0.4s" }} />
             </div>
           </div>
         )}

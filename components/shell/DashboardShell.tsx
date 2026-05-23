@@ -55,7 +55,7 @@ const NAV = [
     section: "TALENT",
     items: [
       {
-        id: "database",    label: "Talent search",     Icon: IcoDB,
+        id: "database",    label: "Database search",     Icon: IcoDB,
         href: "/dashboard/searches",
         match: (p: string) => p.startsWith("/dashboard/searches"),
       },

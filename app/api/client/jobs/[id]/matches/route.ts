@@ -86,7 +86,7 @@ export async function POST(
           // Forward client auth so getClientContext() succeeds
           "Authorization": authHeader,
       },
-      body: JSON.stringify({ jd: job.description, limit: 100 })
+      body: JSON.stringify({ jd: job.description, limit: 500 })
   })
   
   if (!res.ok) {
@@ -108,6 +108,18 @@ export async function POST(
 
       await supabaseAdmin.from("job_matches").upsert(matchInserts, { onConflict: 'job_id, candidate_id' })
   }
+
+  // Update or insert job_match_runs for instant cache reads
+  await supabaseAdmin.from("job_match_runs").upsert({
+      job_id: jobId,
+      total_matches: results.length,
+      cached_matches: results.length,
+      per_page: 25,
+      max_pages: 5,
+      candidate_ids: results.map((c: any) => c.id),
+      last_matched_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+  }, { onConflict: 'job_id' })
 
   return NextResponse.json({ success: true, count: results.length })
 }

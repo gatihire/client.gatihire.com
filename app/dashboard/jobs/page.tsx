@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { JobDashboardClient } from "@/components/jobs/JobDashboardClient"
 import { PageLoader } from "@/components/ui/Loader"
+import { Sparkles, Loader2 } from "lucide-react"
 
 const STAGE_COLORS: Record<string, string> = {
   open: "var(--green)",
@@ -19,8 +20,11 @@ export default function JobsPage() {
   const [credits, setCredits] = useState({ job_post_credits: 0 })
   const [userName, setUserName] = useState("")
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const [selectedJobInitialTab, setSelectedJobInitialTab] = useState<"applicants" | "suggested" | "unlocked">("applicants")
   const [search, setSearch] = useState("")
+  const [matchingJobs, setMatchingJobs] = useState<Set<string>>(new Set())
   const router = useRouter()
+  const matchmakingStarted = useRef(false)
 
   useEffect(() => {
     async function load() {
@@ -39,8 +43,36 @@ export default function JobsPage() {
         let jd = { jobs: [] }, md = { credits: { job_post_credits: 0 } }
         if (jobsRes.ok) jd = await jobsRes.json().catch(() => ({ jobs: [] }))
         if (meRes.ok) md = await meRes.json().catch(() => ({ credits: { job_post_credits: 0 } }))
-        setJobs(Array.isArray(jd.jobs) ? jd.jobs : [])
+        const loadedJobs = Array.isArray(jd.jobs) ? jd.jobs : []
+        setJobs(loadedJobs)
         setCredits(md.credits || { job_post_credits: 0 })
+
+        // Background matchmaking for jobs that need it
+        const jobsNeedingMatchmaking = loadedJobs.filter(
+          (j: any) => j.status === "open" && j.needs_matchmaking && j.description
+        )
+        if (jobsNeedingMatchmaking.length > 0 && !matchmakingStarted.current) {
+          matchmakingStarted.current = true
+          setMatchingJobs(new Set(jobsNeedingMatchmaking.map((j: any) => j.id)))
+          for (const job of jobsNeedingMatchmaking) {
+            fetch(`/api/client/jobs/${job.id}/matches`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => {}).finally(() => {
+              setMatchingJobs(prev => {
+                const next = new Set(prev)
+                next.delete(job.id)
+                return next
+              })
+              // Refresh match count after completion
+              fetch("/api/client/jobs", { headers: { Authorization: `Bearer ${token}` } })
+                .then(r => r.json().then(d => {
+                  if (Array.isArray(d.jobs)) setJobs(d.jobs)
+                }))
+                .catch(() => {})
+            })
+          }
+        }
       } catch (err) {
         setJobs([])
       } finally {
@@ -197,11 +229,16 @@ export default function JobsPage() {
               const salaryStr = (job.salary_min || job.salary_max)
                 ? `₹${job.salary_min ? (job.salary_min >= 100000 ? (job.salary_min / 100000).toFixed(1) + "L" : job.salary_min.toLocaleString()) : "—"}${job.salary_max ? " – " + (job.salary_max >= 100000 ? (job.salary_max / 100000).toFixed(1) + "L" : job.salary_max.toLocaleString()) : "+"}`
                 : null
+              const isMatching = matchingJobs.has(job.id)
+              const hasMatches = job.match_count > 0
 
               return (
                 <div
                   key={job.id}
-                  onClick={() => setSelectedJobId(job.id)}
+                  onClick={() => {
+                    setSelectedJobInitialTab(hasMatches ? "suggested" : "applicants")
+                    setSelectedJobId(job.id)
+                  }}
                   style={{
                     background: "#fff", border: "1px solid var(--line)", borderRadius: 12,
                     padding: "18px 20px", cursor: "pointer", transition: "box-shadow 0.15s, border-color 0.15s",
@@ -235,7 +272,7 @@ export default function JobsPage() {
                     </div>
                   </div>
 
-                  {/* Applicants */}
+                  {/* Applicants + AI Matches */}
                   <div style={{ display: "flex", gap: 16 }}>
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.02em" }}>{job.totalApplicants || 0}</div>
@@ -245,6 +282,24 @@ export default function JobsPage() {
                       <div>
                         <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)", letterSpacing: "-0.02em" }}>{job.newApplicants}</div>
                         <div style={{ fontSize: 10.5, color: "var(--dim)" }}>new</div>
+                      </div>
+                    )}
+                    {isMatching ? (
+                      <div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)", letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 4 }}>
+                          <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                        </div>
+                        <div style={{ fontSize: 10.5, color: "var(--dim)" }}>matching…</div>
+                      </div>
+                    ) : hasMatches ? (
+                      <div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--green)", letterSpacing: "-0.02em" }}>{job.match_count}</div>
+                        <div style={{ fontSize: 10.5, color: "var(--dim)" }}>AI matches</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--dim)", letterSpacing: "-0.02em" }}>—</div>
+                        <div style={{ fontSize: 10.5, color: "var(--dim)" }}>AI matches</div>
                       </div>
                     )}
                   </div>
@@ -280,7 +335,11 @@ export default function JobsPage() {
       )}
 
       {selectedJobId && (
-        <JobDashboardClient jobId={selectedJobId} onClose={() => setSelectedJobId(null)} />
+        <JobDashboardClient
+          jobId={selectedJobId}
+          onClose={() => setSelectedJobId(null)}
+          initialTab={selectedJobInitialTab as "applicants" | "suggested" | "unlocked"}
+        />
       )}
     </div>
   )
