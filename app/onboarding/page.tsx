@@ -293,7 +293,7 @@ export default function OnboardingPage() {
   ]
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--ink)", fontFamily: "var(--font-body)", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", width: "100%", background: "var(--ink)", fontFamily: "var(--font-body)", display: "flex", flexDirection: "column", alignItems: "center" }}>
       {/* ── Step header ── */}
       <header style={{
         padding: "16px 32px",
@@ -301,6 +301,7 @@ export default function OnboardingPage() {
         background: "#fff",
         display: "flex", alignItems: "center", gap: 24,
         position: "sticky", top: 0, zIndex: 10,
+        width: "100%",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
           <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -344,8 +345,8 @@ export default function OnboardingPage() {
       </header>
 
       {/* ── Body ── */}
-      <div style={{ flex: 1, overflow: "auto", padding: "40px 48px", display: "flex", flexDirection: "column" }}>
-        <div style={{ width: "100%", maxWidth: "100%" }}>
+      <div style={{ flex: 1, overflow: "auto", padding: "40px 24px", display: "flex", flexDirection: "column", width: "100%", maxWidth: 680, alignItems: "center", alignSelf: "center" }}>
+        <div style={{ width: "100%" }}>
 
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--gold)", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 10 }}>
             STEP {step} / {STEPS.length}
