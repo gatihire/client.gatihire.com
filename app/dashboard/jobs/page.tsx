@@ -40,7 +40,7 @@ export default function JobsPage() {
           fetch("/api/client/jobs", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("/api/client/me", { headers: { Authorization: `Bearer ${token}` } })
         ])
-        let jd = { jobs: [] }, md = { credits: { job_post_credits: 0 } }
+        let jd: { jobs: any[] } = { jobs: [] }, md = { credits: { job_post_credits: 0 } }
         if (jobsRes.ok) jd = await jobsRes.json().catch(() => ({ jobs: [] }))
         if (meRes.ok) md = await meRes.json().catch(() => ({ credits: { job_post_credits: 0 } }))
         const loadedJobs = Array.isArray(jd.jobs) ? jd.jobs : []

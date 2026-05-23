@@ -344,8 +344,8 @@ export default function OnboardingPage() {
       </header>
 
       {/* ── Body ── */}
-      <div style={{ flex: 1, overflow: "auto", padding: "40px", display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
-        <div style={{ width: "min(900px, 100%)" }}>
+      <div style={{ flex: 1, overflow: "auto", padding: "40px 48px", display: "flex", flexDirection: "column" }}>
+        <div style={{ width: "100%", maxWidth: "100%" }}>
 
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--gold)", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 10 }}>
             STEP {step} / {STEPS.length}
