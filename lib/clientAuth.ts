@@ -11,7 +11,7 @@ export async function getClientContext(request: NextRequest) {
     .select("client_id, onboarding_completed")
     .eq("auth_user_id", user.id)
     .maybeSingle()
-  if (!cu?.onboarding_completed) return null
+  if (!cu) return null
   return { user, clientId: cu.client_id, userEmail: user.email }
 }
 
