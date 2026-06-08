@@ -18,23 +18,36 @@ export async function POST(request: NextRequest) {
 
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
     
-    const prompt = `You are an expert HR copywriter specializing in Indian logistics, transport, and supply chain industries.
-Write a professional, engaging, and clear job description based on these inputs:
+    const prompt = `You are an expert HR copywriter specializing in Indian logistics, transport, warehousing, and supply chain industries.
+Write a highly professional, detailed, and engaging job description tailored for the Indian job market based on these inputs:
 
 Job Title: ${customInputs.jobTitle}
 Industry: ${customInputs.industry || "Not specified"}
 Sub Category: ${customInputs.subCategory || "Not specified"}
 Location: ${customInputs.location || "Not specified"}
-Employment Type: ${customInputs.type || "Full-time"}
+City: ${customInputs.city || "Not specified"}
+Employment Type: ${customInputs.employmentType || "Full-time"}
+Shift Type: ${customInputs.shiftType || "Day shift"}
+Salary Type: ${customInputs.salaryType || "Monthly"}
+Min Experience: ${customInputs.experienceMin || "Not specified"} years
+Max Experience: ${customInputs.experienceMax || "Not specified"} years
+Min Education: ${customInputs.educationMin || "Not specified"}
+English Level: ${customInputs.englishLevel || "Not specified"}
+License Type: ${customInputs.licenseType || "Not specified"}
+Role Category: ${customInputs.roleCategory || "Not specified"}
+Department Category: ${customInputs.departmentCategory || "Not specified"}
+Urgency: ${customInputs.urgency || "Not specified"}
+Openings: ${customInputs.openings || 1}
 Required Skills: ${(customInputs.skillsRequired || []).join(", ")}
 Additional Requirements/Constraints: ${customInputs.additionalRequirements || "None"}
 
 Please output valid JSON only, without markdown wrapping or code blocks. The JSON must have these keys:
 {
-  "description": "A compelling 2-3 paragraph summary of the role, the company, and why it's a great opportunity.",
-  "responsibilities": ["List item 1", "List item 2", "etc"],
-  "requirements": ["List item 1", "List item 2", "etc"],
-  "skills": ["Skill 1", "Skill 2"]
+  "description": "A compelling 2-3 paragraph summary of the role, what the company does (contextual to logistics), the impact of the role, and why it's a great opportunity for candidates in India.",
+  "responsibilities": ["Specific, actionable list item 1", "Specific, actionable list item 2", "At least 5-7 detailed responsibilities"],
+  "requirements": ["Specific requirement 1", "Specific requirement 2", "At least 5-7 detailed requirements including experience, education, certifications if applicable"],
+  "benefits": ["Benefit 1", "Benefit 2", "Common logistics industry benefits like PF, ESI, insurance, incentives, etc."],
+  "suggestedSkills": ["Must-have skill 1", "Must-have skill 2", "Good-to-have skill 1", "8-12 relevant skills specific to this role in Indian logistics industry"]
 }`
 
     const result = await model.generateContent(prompt)
@@ -42,7 +55,10 @@ Please output valid JSON only, without markdown wrapping or code blocks. The JSO
     
     const parsed = JSON.parse(text)
 
-    return NextResponse.json({ jobDescription: parsed })
+    return NextResponse.json({ 
+      jobDescription: parsed, 
+      suggestedSkills: parsed.suggestedSkills || []
+    })
   } catch (error) {
     console.error("JD generation failed:", error)
     return NextResponse.json(

@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Modal } from "@/components/ui/Modal"
+import { MIGRATION_SKILLS, getSuggestionMatches } from "@/lib/search-suggestions"
 
 const SUB_CATEGORY_OPTIONS = [
   { value: "driver_heavy_vehicle", label: "Driver – Heavy Vehicle" },
@@ -102,22 +103,83 @@ export default function NewJobPage() {
 
   const [skillsMust, setSkillsMust] = useState<string[]>([])
   const [skillMustInput, setSkillMustInput] = useState("")
+  const [showMustSuggestions, setShowMustSuggestions] = useState(false)
   const [skillsGood, setSkillsGood] = useState<string[]>([])
   const [skillGoodInput, setSkillGoodInput] = useState("")
+  const [showGoodSuggestions, setShowGoodSuggestions] = useState(false)
   const [generateHintOpen, setGenerateHintOpen] = useState(false)
   const [minRequirements, setMinRequirements] = useState("")
   const [generatingJd, setGeneratingJd] = useState(false)
+  const [suggestedSkills, setSuggestedSkills] = useState<string[]>([])
+  const [generatingSkills, setGeneratingSkills] = useState(false)
+
+  const mustSuggestionRef = useRef<HTMLDivElement>(null)
+  const goodSuggestionRef = useRef<HTMLDivElement>(null)
 
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
   const addSkillMust = (s: string) => {
     if (s.trim() && !skillsMust.includes(s.trim())) setSkillsMust(prev => [...prev, s.trim()])
     setSkillMustInput("")
+    setShowMustSuggestions(false)
   }
 
   const addSkillGood = (s: string) => {
     if (s.trim() && !skillsGood.includes(s.trim())) setSkillsGood(prev => [...prev, s.trim()])
     setSkillGoodInput("")
+    setShowGoodSuggestions(false)
+  }
+
+  const removeSkillMust = (s: string) => {
+    setSkillsMust(prev => prev.filter(x => x !== s))
+  }
+
+  const removeSkillGood = (s: string) => {
+    setSkillsGood(prev => prev.filter(x => x !== s))
+  }
+
+  const generateSkills = async () => {
+    try {
+      setGeneratingSkills(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const res = await fetch("/api/client/generate-jd", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customInputs: {
+            jobTitle: form.title,
+            industry: form.industry,
+            subCategory: form.sub_category,
+            location: form.location,
+            city: form.city,
+            employmentType: form.employment_type,
+            shiftType: form.shift_type,
+            salaryType: form.salary_type,
+            experienceMin: form.experience_min_years,
+            experienceMax: form.experience_max_years,
+            educationMin: form.education_min,
+            englishLevel: form.english_level,
+            licenseType: form.license_type,
+            roleCategory: form.role_category,
+            departmentCategory: form.department_category,
+            urgency: form.urgency_tag,
+            openings: form.openings,
+            skillsRequired: skillsMust,
+            additionalRequirements: ""
+          }
+        })
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || "Failed to generate skills")
+      if (data?.suggestedSkills) {
+        setSuggestedSkills(data.suggestedSkills)
+      }
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setGeneratingSkills(false)
+    }
   }
 
   const generateJD = async () => {
@@ -130,9 +192,25 @@ export default function NewJobPage() {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           customInputs: {
-            jobTitle: form.title, industry: form.industry, subCategory: form.sub_category,
-            location: form.location, type: form.employment_type,
-            skillsRequired: skillsMust, additionalRequirements: minRequirements
+            jobTitle: form.title,
+            industry: form.industry,
+            subCategory: form.sub_category,
+            location: form.location,
+            city: form.city,
+            employmentType: form.employment_type,
+            shiftType: form.shift_type,
+            salaryType: form.salary_type,
+            experienceMin: form.experience_min_years,
+            experienceMax: form.experience_max_years,
+            educationMin: form.education_min,
+            englishLevel: form.english_level,
+            licenseType: form.license_type,
+            roleCategory: form.role_category,
+            departmentCategory: form.department_category,
+            urgency: form.urgency_tag,
+            openings: form.openings,
+            skillsRequired: skillsMust,
+            additionalRequirements: minRequirements
           }
         })
       })
@@ -141,12 +219,17 @@ export default function NewJobPage() {
       const jd = data?.jobDescription || data
       const responsibilities = Array.isArray(jd?.responsibilities) ? jd.responsibilities : []
       const requirements = Array.isArray(jd?.requirements) ? jd.requirements : []
+      const benefits = Array.isArray(jd?.benefits) ? jd.benefits : []
       const formattedDescription = [
         jd?.description || "",
         responsibilities.length ? "\n### Key Responsibilities\n" + responsibilities.map((r: string) => `• ${r}`).join("\n") : "",
-        requirements.length ? "\n### Requirements\n" + requirements.map((r: string) => `• ${r}`).join("\n") : ""
+        requirements.length ? "\n### Requirements\n" + requirements.map((r: string) => `• ${r}`).join("\n") : "",
+        benefits.length ? "\n### Benefits\n" + benefits.map((b: string) => `• ${b}`).join("\n") : ""
       ].filter((x) => typeof x === "string" && x.trim().length).join("\n")
       set("description", formattedDescription)
+      if (data?.suggestedSkills) {
+        setSuggestedSkills(data.suggestedSkills)
+      }
       setGenerateHintOpen(false)
     } catch (e: any) {
       setError(e.message)
@@ -185,6 +268,22 @@ export default function NewJobPage() {
     }
   }
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (mustSuggestionRef.current && !mustSuggestionRef.current.contains(event.target as Node)) {
+        setShowMustSuggestions(false)
+      }
+      if (goodSuggestionRef.current && !goodSuggestionRef.current.contains(event.target as Node)) {
+        setShowGoodSuggestions(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const mustSuggestions = getSuggestionMatches(skillMustInput, MIGRATION_SKILLS, 8)
+  const goodSuggestions = getSuggestionMatches(skillGoodInput, MIGRATION_SKILLS, 8)
+
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", paddingBottom: 60 }}>
       {/* Page header */}
@@ -194,7 +293,7 @@ export default function NewJobPage() {
             ← Jobs
           </button>
         </div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.02em", margin: "0 0 4px" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.01em", margin: "0 0 4px" }}>
           Post a new job
         </h1>
         <p style={{ fontSize: 12.5, color: "var(--dim)", margin: 0 }}>
@@ -271,22 +370,60 @@ export default function NewJobPage() {
 
         {/* Section 5: Skills */}
         <Section num={5} title="Skills" sub="Must-haves are used to auto-match candidates in the talent DB">
+          <div style={{ marginBottom: 12 }}>
+            <button
+              type="button"
+              onClick={generateSkills}
+              disabled={generatingSkills || !form.title.trim()}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "8px 18px", borderRadius: 8,
+                background: generatingSkills || !form.title.trim() ? "var(--ink3)" : "var(--gold)",
+                border: "none",
+                color: generatingSkills || !form.title.trim() ? "var(--dim)" : "#fff",
+                fontWeight: 600, cursor: generatingSkills || !form.title.trim() ? "not-allowed" : "pointer",
+                fontSize: 13, fontFamily: "var(--font-body)"
+              }}
+            >
+              {generatingSkills ? "Generating skills..." : "Suggest Skills"}
+            </button>
+          </div>
           <div>
             <label style={lStyle}>Must-have skills</label>
-            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-              <input
-                value={skillMustInput} onChange={e => setSkillMustInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addSkillMust(skillMustInput) } }}
-                placeholder="Type skill + Enter to add" style={{ ...iStyle, flex: 1 }}
-              />
-              <button type="button" onClick={() => addSkillMust(skillMustInput)} style={outlineBtn}>Add</button>
+            <div style={{ position: "relative" }} ref={mustSuggestionRef}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input
+                  value={skillMustInput}
+                  onChange={e => { setSkillMustInput(e.target.value); setShowMustSuggestions(true) }}
+                  onFocus={() => setShowMustSuggestions(true)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      addSkillMust(skillMustInput)
+                    } else if (e.key === "Escape") {
+                      setShowMustSuggestions(false)
+                    }
+                  }}
+                  placeholder="Type skill + Enter to add"
+                  style={{ ...iStyle, flex: 1 }}
+                  autoComplete="off"
+                />
+                <button type="button" onClick={() => addSkillMust(skillMustInput)} style={outlineBtn}>Add</button>
+              </div>
+              {showMustSuggestions && skillMustInput && mustSuggestions.length > 0 && (
+                <div style={suggestionsDropdownStyle}>
+                  {mustSuggestions.map(s => (
+                    <SuggestionItem key={s} label={s} onClick={() => addSkillMust(s)} />
+                  ))}
+                </div>
+              )}
             </div>
             {skillsMust.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
                 {skillsMust.map(s => (
                   <span key={s} style={skillTag}>
                     {s}
-                    <button type="button" onClick={() => setSkillsMust(p => p.filter(x => x !== s))} style={tagX}>×</button>
+                    <button type="button" onClick={() => removeSkillMust(s)} style={tagX}>×</button>
                   </span>
                 ))}
               </div>
@@ -294,25 +431,106 @@ export default function NewJobPage() {
           </div>
           <div style={{ marginTop: 4 }}>
             <label style={lStyle}>Good-to-have skills</label>
-            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-              <input
-                value={skillGoodInput} onChange={e => setSkillGoodInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addSkillGood(skillGoodInput) } }}
-                placeholder="Type skill + Enter to add" style={{ ...iStyle, flex: 1 }}
-              />
-              <button type="button" onClick={() => addSkillGood(skillGoodInput)} style={outlineBtn}>Add</button>
+            <div style={{ position: "relative" }} ref={goodSuggestionRef}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input
+                  value={skillGoodInput}
+                  onChange={e => { setSkillGoodInput(e.target.value); setShowGoodSuggestions(true) }}
+                  onFocus={() => setShowGoodSuggestions(true)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      addSkillGood(skillGoodInput)
+                    } else if (e.key === "Escape") {
+                      setShowGoodSuggestions(false)
+                    }
+                  }}
+                  placeholder="Type skill + Enter to add"
+                  style={{ ...iStyle, flex: 1 }}
+                  autoComplete="off"
+                />
+                <button type="button" onClick={() => addSkillGood(skillGoodInput)} style={outlineBtn}>Add</button>
+              </div>
+              {showGoodSuggestions && skillGoodInput && goodSuggestions.length > 0 && (
+                <div style={suggestionsDropdownStyle}>
+                  {goodSuggestions.map(s => (
+                    <SuggestionItem key={s} label={s} onClick={() => addSkillGood(s)} />
+                  ))}
+                </div>
+              )}
             </div>
             {skillsGood.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {skillsGood.map(s => (
                   <span key={s} style={{ ...skillTag, background: "var(--ink3)", borderColor: "var(--line2)", color: "var(--secondary)" }}>
                     {s}
-                    <button type="button" onClick={() => setSkillsGood(p => p.filter(x => x !== s))} style={{ ...tagX, color: "var(--dim)" }}>×</button>
+                    <button type="button" onClick={() => removeSkillGood(s)} style={{ ...tagX, color: "var(--dim)" }}>×</button>
                   </span>
                 ))}
               </div>
             )}
           </div>
+          {suggestedSkills.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <label style={lStyle}>Suggested skills</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {suggestedSkills.map(s => {
+                  const isInMust = skillsMust.includes(s)
+                  const isInGood = skillsGood.includes(s)
+                  return (
+                    <div key={s} style={{ display: "flex", gap: 2, alignItems: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isInMust) {
+                            removeSkillMust(s)
+                          } else {
+                            if (isInGood) {
+                              removeSkillGood(s)
+                            }
+                            addSkillMust(s)
+                          }
+                        }}
+                        style={{
+                          ...skillTag,
+                          background: isInMust ? "var(--gold-bg)" : "transparent",
+                          borderColor: isInMust ? "var(--gold-border)" : "var(--line2)",
+                          color: isInMust ? "var(--gold)" : "var(--secondary)",
+                          cursor: "pointer",
+                          opacity: 1
+                        }}
+                      >
+                        Must: {s}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isInGood) {
+                            removeSkillGood(s)
+                          } else {
+                            if (isInMust) {
+                              removeSkillMust(s)
+                            }
+                            addSkillGood(s)
+                          }
+                        }}
+                        style={{
+                          ...skillTag,
+                          background: isInGood ? "var(--ink3)" : "transparent",
+                          borderColor: isInGood ? "var(--line2)" : "var(--line2)",
+                          color: isInGood ? "var(--secondary)" : "var(--secondary)",
+                          cursor: "pointer",
+                          opacity: 1
+                        }}
+                      >
+                        Good: {s}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </Section>
 
         {/* Section 6: Apply method */}
@@ -329,7 +547,7 @@ export default function NewJobPage() {
         </Section>
 
         {/* Section 7: Job description */}
-        <Section num={7} title="Job description" sub="3–5 paragraphs work best. Be specific about day-to-day responsibilities.">
+        <Section num={7} title="Job description" sub="3-5 paragraphs work best. Be specific about day-to-day responsibilities.">
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -8, marginBottom: 8 }}>
             <button
               type="button"
@@ -467,6 +685,27 @@ function SelectField({ label, value, onChange, options }: {
   )
 }
 
+function SuggestionItem({ label, onClick }: { label: string; onClick: () => void }) {
+  const [isHovered, setIsHovered] = useState(false);
+  return (
+    <div
+      style={{
+        padding: "8px 12px",
+        cursor: "pointer",
+        fontSize: 13,
+        color: "var(--bright)",
+        transition: "background 0.15s",
+        background: isHovered ? "var(--ink)" : "transparent"
+      }}
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {label}
+    </div>
+  );
+}
+
 const lStyle: React.CSSProperties = {
   display: "block", fontSize: 10, color: "var(--secondary)",
   fontFamily: "var(--font-mono)", textTransform: "uppercase",
@@ -493,4 +732,18 @@ const skillTag: React.CSSProperties = {
 const tagX: React.CSSProperties = {
   background: "none", border: "none", cursor: "pointer",
   color: "var(--gold)", fontSize: 14, padding: "0", lineHeight: 1
+}
+const suggestionsDropdownStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "100%",
+  left: 0,
+  right: 0,
+  background: "#fff",
+  border: "1px solid var(--line2)",
+  borderRadius: 8,
+  marginTop: 4,
+  maxHeight: 200,
+  overflowY: "auto",
+  zIndex: 100,
+  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
 }
