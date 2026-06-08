@@ -48,7 +48,8 @@ Please output valid JSON only, without markdown wrapping or code blocks. The JSO
   "responsibilities": ["Specific, actionable list item 1", "Specific, actionable list item 2", "At least 5-7 detailed responsibilities"],
   "requirements": ["Specific requirement 1", "Specific requirement 2", "At least 5-7 detailed requirements including experience, education, certifications if applicable"],
   "benefits": ["Benefit 1", "Benefit 2", "Common logistics industry benefits like PF, ESI, insurance, incentives, etc."],
-  "suggestedSkills": ["Must-have skill 1", "Must-have skill 2", "Good-to-have skill 1", "8-12 relevant skills specific to this role in Indian logistics industry"]
+  "mustHaveSkills": ["Must-have skill 1", "Must-have skill 2", "Generate 5-8 critical skills specific to this role"],
+  "goodToHaveSkills": ["Good-to-have skill 1", "Good-to-have skill 2", "Generate 3-5 bonus skills"]
 }`
 
     const result = await model.generateContent(prompt)
@@ -58,7 +59,8 @@ Please output valid JSON only, without markdown wrapping or code blocks. The JSO
 
     return NextResponse.json({ 
       jobDescription: parsed, 
-      suggestedSkills: parsed.suggestedSkills || []
+      mustHaveSkills: parsed.mustHaveSkills || [],
+      goodToHaveSkills: parsed.goodToHaveSkills || []
     })
   } catch (error) {
     console.error("JD generation failed:", error)

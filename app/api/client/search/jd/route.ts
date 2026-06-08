@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   if (!criteriaResult) {
     // 1. Extract criteria + embedding in parallel
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" })
     const prompt = `Analyze this job description and extract key hiring criteria for candidate matching.
 JD: """${jd.slice(0, 3000)}"""
 Return ONLY valid JSON:

@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
   if (!criteriaResult) {
     // 1. AI extraction + embedding in parallel
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" })
     const prompt = `You are a logistics recruitment search assistant. Extract structured search criteria from this natural language query.
 Query: "${query}"
 Return ONLY valid JSON:
