@@ -171,11 +171,21 @@ export default function NewJobPage() {
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || "Failed to generate skills")
-      if (data?.mustHaveSkills) {
-        setSkillsMust(prev => Array.from(new Set([...prev, ...data.mustHaveSkills])))
+      
+      const newMustSkills = data?.mustHaveSkills || []
+      const newGoodSkills = data?.goodToHaveSkills || []
+      
+      if (newMustSkills.length > 0) {
+        setSkillsMust(prev => {
+          const combined = [...prev, ...newMustSkills]
+          return Array.from(new Set(combined))
+        })
       }
-      if (data?.goodToHaveSkills) {
-        setSkillsGood(prev => Array.from(new Set([...prev, ...data.goodToHaveSkills])))
+      if (newGoodSkills.length > 0) {
+        setSkillsGood(prev => {
+          const combined = [...prev, ...newGoodSkills]
+          return Array.from(new Set(combined))
+        })
       }
     } catch (e: any) {
       setError(e.message)
@@ -229,11 +239,21 @@ export default function NewJobPage() {
         benefits.length ? "\n### Benefits\n" + benefits.map((b: string) => `• ${b}`).join("\n") : ""
       ].filter((x) => typeof x === "string" && x.trim().length).join("\n")
       set("description", formattedDescription)
-      if (data?.mustHaveSkills) {
-        setSkillsMust(prev => Array.from(new Set([...prev, ...data.mustHaveSkills])))
+      
+      const newMustSkills = data?.mustHaveSkills || []
+      const newGoodSkills = data?.goodToHaveSkills || []
+      
+      if (newMustSkills.length > 0) {
+        setSkillsMust(prev => {
+          const combined = [...prev, ...newMustSkills]
+          return Array.from(new Set(combined))
+        })
       }
-      if (data?.goodToHaveSkills) {
-        setSkillsGood(prev => Array.from(new Set([...prev, ...data.goodToHaveSkills])))
+      if (newGoodSkills.length > 0) {
+        setSkillsGood(prev => {
+          const combined = [...prev, ...newGoodSkills]
+          return Array.from(new Set(combined))
+        })
       }
       setGenerateHintOpen(false)
     } catch (e: any) {
