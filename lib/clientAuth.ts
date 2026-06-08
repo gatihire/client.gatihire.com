@@ -2,16 +2,21 @@ import { NextRequest } from "next/server"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 
 export async function getClientContext(request: NextRequest) {
+  console.log("getClientContext: called")
   const token = (request.headers.get("authorization") || "").replace("Bearer ", "")
+  console.log("getClientContext: token?", !!token)
   if (!token) return null
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+  console.log("getClientContext: supabase auth.getUser error?", error)
+  console.log("getClientContext: user?", !!user)
   if (error || !user) return null
   const { data: cu } = await supabaseAdmin
     .from("client_users")
     .select("client_id, onboarding_completed")
     .eq("auth_user_id", user.id)
     .maybeSingle()
-  if (!cu) return null
+  console.log("getClientContext: client_user?", cu)
+  if (!cu?.onboarding_completed) return null
   return { user, clientId: cu.client_id, userEmail: user.email }
 }
 

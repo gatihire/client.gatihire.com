@@ -105,6 +105,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     const res = await fetch("/api/client/me", { headers: { Authorization: `Bearer ${token}` } })
     if (res.ok) {
       const d = await res.json()
+      if (d.needsOnboarding) {
+        router.push("/onboarding")
+        return
+      }
       setClientData(d.client || null)
       setClientName(d.client?.name || "")
       setCredits(d.credits || null)

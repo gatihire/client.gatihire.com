@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin"
 
 async function getClientFromToken(token: string) {
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-  if (error || !user) return null
+  if (error || !user) return { error: "Unauthorized" }
 
   const { data: clientUser } = await supabaseAdmin
     .from("client_users")
@@ -11,7 +11,9 @@ async function getClientFromToken(token: string) {
     .eq("auth_user_id", user.id)
     .maybeSingle()
 
-  if (!clientUser) return null
+  if (!clientUser || !clientUser.onboarding_completed) {
+    return { needsOnboarding: true }
+  }
   return { user, clientUser }
 }
 
@@ -20,9 +22,10 @@ export async function GET(request: NextRequest) {
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const ctx = await getClientFromToken(token)
-  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (ctx?.error) return NextResponse.json({ error: ctx.error }, { status: 401 })
+  if (ctx?.needsOnboarding) return NextResponse.json({ needsOnboarding: true })
 
-  const { clientUser } = ctx
+  const { clientUser } = ctx as { user: any, clientUser: any }
 
   const [{ data: client }, { data: credits }] = await Promise.all([
     supabaseAdmin.from("clients").select("id,name,slug,logo_url,industry,location,about").eq("id", clientUser.client_id).maybeSingle(),
