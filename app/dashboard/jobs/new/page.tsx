@@ -110,7 +110,6 @@ export default function NewJobPage() {
   const [generateHintOpen, setGenerateHintOpen] = useState(false)
   const [minRequirements, setMinRequirements] = useState("")
   const [generatingJd, setGeneratingJd] = useState(false)
-  const [suggestedSkills, setSuggestedSkills] = useState<string[]>([])
   const [generatingSkills, setGeneratingSkills] = useState(false)
 
   const mustSuggestionRef = useRef<HTMLDivElement>(null)
@@ -172,8 +171,11 @@ export default function NewJobPage() {
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || "Failed to generate skills")
-      if (data?.suggestedSkills) {
-        setSuggestedSkills(data.suggestedSkills)
+      if (data?.mustHaveSkills) {
+        setSkillsMust(prev => Array.from(new Set([...prev, ...data.mustHaveSkills])))
+      }
+      if (data?.goodToHaveSkills) {
+        setSkillsGood(prev => Array.from(new Set([...prev, ...data.goodToHaveSkills])))
       }
     } catch (e: any) {
       setError(e.message)
@@ -227,8 +229,11 @@ export default function NewJobPage() {
         benefits.length ? "\n### Benefits\n" + benefits.map((b: string) => `• ${b}`).join("\n") : ""
       ].filter((x) => typeof x === "string" && x.trim().length).join("\n")
       set("description", formattedDescription)
-      if (data?.suggestedSkills) {
-        setSuggestedSkills(data.suggestedSkills)
+      if (data?.mustHaveSkills) {
+        setSkillsMust(prev => Array.from(new Set([...prev, ...data.mustHaveSkills])))
+      }
+      if (data?.goodToHaveSkills) {
+        setSkillsGood(prev => Array.from(new Set([...prev, ...data.goodToHaveSkills])))
       }
       setGenerateHintOpen(false)
     } catch (e: any) {
@@ -370,22 +375,22 @@ export default function NewJobPage() {
 
         {/* Section 5: Skills */}
         <Section num={5} title="Skills" sub="Must-haves are used to auto-match candidates in the talent DB">
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -8, marginBottom: 8 }}>
             <button
               type="button"
               onClick={generateSkills}
               disabled={generatingSkills || !form.title.trim()}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "8px 18px", borderRadius: 8,
-                background: generatingSkills || !form.title.trim() ? "var(--ink3)" : "var(--gold)",
-                border: "none",
-                color: generatingSkills || !form.title.trim() ? "var(--dim)" : "#fff",
-                fontWeight: 600, cursor: generatingSkills || !form.title.trim() ? "not-allowed" : "pointer",
-                fontSize: 13, fontFamily: "var(--font-body)"
+                padding: "5px 12px", borderRadius: 6,
+                background: "var(--gold-bg)", border: "1px solid var(--gold-border)",
+                color: "var(--gold)", fontSize: 12, fontWeight: 600,
+                cursor: generatingSkills || !form.title.trim() ? "not-allowed" : "pointer", fontFamily: "var(--font-body)",
+                opacity: generatingSkills || !form.title.trim() ? 0.5 : 1
               }}
             >
-              {generatingSkills ? "Generating skills..." : "Suggest Skills"}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/></svg>
+              {generatingSkills ? "Suggesting..." : "Auto-suggest"}
             </button>
           </div>
           <div>
@@ -470,67 +475,6 @@ export default function NewJobPage() {
               </div>
             )}
           </div>
-          {suggestedSkills.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <label style={lStyle}>Suggested skills</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                {suggestedSkills.map(s => {
-                  const isInMust = skillsMust.includes(s)
-                  const isInGood = skillsGood.includes(s)
-                  return (
-                    <div key={s} style={{ display: "flex", gap: 2, alignItems: "center" }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isInMust) {
-                            removeSkillMust(s)
-                          } else {
-                            if (isInGood) {
-                              removeSkillGood(s)
-                            }
-                            addSkillMust(s)
-                          }
-                        }}
-                        style={{
-                          ...skillTag,
-                          background: isInMust ? "var(--gold-bg)" : "transparent",
-                          borderColor: isInMust ? "var(--gold-border)" : "var(--line2)",
-                          color: isInMust ? "var(--gold)" : "var(--secondary)",
-                          cursor: "pointer",
-                          opacity: 1
-                        }}
-                      >
-                        Must: {s}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isInGood) {
-                            removeSkillGood(s)
-                          } else {
-                            if (isInMust) {
-                              removeSkillMust(s)
-                            }
-                            addSkillGood(s)
-                          }
-                        }}
-                        style={{
-                          ...skillTag,
-                          background: isInGood ? "var(--ink3)" : "transparent",
-                          borderColor: isInGood ? "var(--line2)" : "var(--line2)",
-                          color: isInGood ? "var(--secondary)" : "var(--secondary)",
-                          cursor: "pointer",
-                          opacity: 1
-                        }}
-                      >
-                        Good: {s}
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
         </Section>
 
         {/* Section 6: Apply method */}
