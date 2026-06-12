@@ -217,7 +217,7 @@ export default function OnboardingPage() {
   }
 
   const generateAbout = async () => {
-    if (!website) { setError("Please provide a website URL to generate company details."); return }
+    // Website is now optional, so no check here.
     setGeneratingAbout(true)
     setError("")
     try {
@@ -285,7 +285,7 @@ export default function OnboardingPage() {
   )
 
   const canNext1 = name.trim() && companyTypeId && (companyTypeId === "other" ? companyTypeOther.trim() : true)
-  const canSubmit = primaryContactName.trim() && primaryContactEmail.trim() && website.trim()
+  const canSubmit = primaryContactName.trim() && primaryContactEmail.trim()
 
   const STEPS = [
     { n: 1 as const, label: "Company" },
@@ -468,7 +468,7 @@ export default function OnboardingPage() {
               <div style={{ display: "grid", gap: 24 }}>
 
                 {/* Website */}
-                <Field label="Website" required>
+                <Field label="Website (Optional)">
                   <TextInput value={website} onChange={setWebsite} placeholder="mahindralogistics.com" type="url" />
                 </Field>
 

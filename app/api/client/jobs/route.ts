@@ -1,6 +1,137 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 import { getClientContext } from "@/lib/clientAuth"
+import { GoogleGenerativeAI } from "@google/generative-ai"
+import { generateEmbedding } from "@/lib/embedding"
+import { redis } from "@/lib/redis"
+import crypto from "crypto"
+import { calculateCandidateScore, applySidebarFilters } from "@/lib/scoring"
+import { sendBulkJobInvites } from "@/lib/jobInvites"
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+
+function buildWebsearchQuery(terms: string[], max = 15): string {
+  return terms.slice(0, max).map(t => t.includes(" ") ? `"${t}"` : t).filter(Boolean).join(" OR ")
+}
+
+async function runMatchmakingForJob(jobId: string, jd: string, clientId: string) {
+  try {
+    // Step 1: Extract criteria + embedding (same as jd search)
+    const jdHash = crypto.createHash('md5').update(jd.trim().toLowerCase()).digest('hex')
+    const cacheKey = `jd_search_criteria:${jdHash}`
+    let criteriaResult: any = null
+    let embedding: number[] = []
+
+    if (redis) {
+      const cachedData = await redis.get<{ criteria: any, embedding: number[] }>(cacheKey)
+      if (cachedData) {
+        criteriaResult = cachedData.criteria
+        embedding = cachedData.embedding
+      }
+    }
+
+    if (!criteriaResult) {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" })
+      const prompt = `Analyze this job description and extract key hiring criteria for candidate matching.
+JD: """${jd.slice(0, 3000)}"""
+Return ONLY valid JSON:
+{"title": string, "required_skills": string[], "preferred_skills": string[], "min_experience_years": number|null, "location": string|null, "key_keywords": string[]}`
+
+      const [extracted, emb] = await Promise.all([
+        model.generateContent(prompt).then(r => {
+          const text = r.response.text().replace(/```json\n?|\n?```/g, "").trim()
+          return JSON.parse(text)
+        }).catch(() => ({ title: "", required_skills: [], preferred_skills: [], key_keywords: [] })),
+        generateEmbedding(jd.slice(0, 7000)).catch(() => [] as number[]),
+      ])
+      
+      criteriaResult = extracted
+      embedding = emb
+
+      if (redis && embedding.length > 0) {
+        await redis.set(cacheKey, { criteria: criteriaResult, embedding }, { ex: 3600 * 24 }) // Cache 24h
+      }
+    }
+
+    const criteria = criteriaResult
+
+    // Step 2: Build websearch query
+    const allKeyTerms = [...(criteria.required_skills || []), ...(criteria.key_keywords || []), criteria.title || ""].filter(Boolean)
+    const websearchQ = buildWebsearchQuery(allKeyTerms, 15).replace(/[()]/g, " ").trim()
+
+    // Step 3: Build RPC filters
+    const rpcFilters: any = {}
+    if (criteria.location) rpcFilters.currentCity = [criteria.location]
+    if (criteria.min_experience_years) rpcFilters.exp_min = criteria.min_experience_years.toString()
+    if (allKeyTerms.length > 0) rpcFilters.must_kw = allKeyTerms
+
+    // Step 4: Run RPC search
+    const { data, error } = await supabaseAdmin.rpc("search_candidates_hybrid", {
+      p_query_text: websearchQ,
+      p_query_embedding: embedding.length ? embedding : null,
+      p_match_threshold: 0.15,
+      p_filters: rpcFilters,
+      p_limit: 500,
+      p_offset: 0
+    })
+
+    if (error) {
+      console.error("Matchmaking RPC error:", error)
+      return { success: false, error }
+    }
+
+    // Step 5: Score and sort candidates
+    const mappedCriteria = {
+      role: criteria.title,
+      location: criteria.location,
+      min_experience_years: criteria.min_experience_years,
+      skills: [...(criteria.required_skills || []), ...(criteria.preferred_skills || [])]
+    }
+
+    let results = (data || [])
+      .map((row: any) => {
+        const rawCandidate = row.candidate_data
+        const calculatedScore = calculateCandidateScore(mappedCriteria, rawCandidate)
+        const finalScore = Math.max(calculatedScore, row.match_score * 100)
+        return { ...rawCandidate, match_score: Math.round(finalScore) }
+      })
+      .filter((c: any) => c.match_score >= 12)
+
+    results.sort((a: any, b: any) => (b.match_score || 0) - (a.match_score || 0))
+    results = results.map((c: any) => ({ ...c, match_score: Math.min(100, c.match_score) }))
+    results = applySidebarFilters(results, {})
+
+    // Step 6: Store matches in job_matches
+    if (results.length > 0) {
+      const matchInserts = results.map((c: any) => ({
+        job_id: jobId,
+        candidate_id: c.id,
+        relevance_score: c.match_score,
+        source: 'client_auto_match',
+        created_at: new Date().toISOString()
+      }))
+
+      await supabaseAdmin.from("job_matches").upsert(matchInserts, { onConflict: 'job_id, candidate_id' })
+    }
+
+    // Step 7: Update job_match_runs
+    await supabaseAdmin.from("job_match_runs").upsert({
+      job_id: jobId,
+      total_matches: results.length,
+      cached_matches: results.length,
+      per_page: 25,
+      max_pages: 5,
+      candidate_ids: results.map((c: any) => c.id),
+      last_matched_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'job_id' })
+
+    return { success: true, candidates: results }
+  } catch (err) {
+    console.error("Matchmaking failed:", err)
+    return { success: false, error: err }
+  }
+}
 
 export async function GET(request: NextRequest) {
   const ctx = await getClientContext(request)
@@ -131,7 +262,7 @@ export async function POST(request: NextRequest) {
       status: "open",
       created_by: ctx.user.id
     })
-    .select("id").single()
+    .select("id, title, description").single()
 
   if (error) {
     console.error("Job creation error:", error)
@@ -168,6 +299,27 @@ export async function POST(request: NextRequest) {
   await supabaseAdmin.from("client_credit_transactions").insert({
     client_id: ctx.clientId, type: "use_job", amount: -1, note: `Job posted: ${title}`
   })
+
+  // Run matchmaking and send invites if auto-match is enabled
+  if (auto_matchmaking_enabled !== false && job.description) {
+    // Run matchmaking in background (don't block response)
+    ;(async () => {
+      try {
+        const matchmakingResult = await runMatchmakingForJob(jobId, job.description, ctx.clientId)
+        if (matchmakingResult.success && matchmakingResult.candidates) {
+          // Take top 150 candidates
+          const top150 = matchmakingResult.candidates.slice(0, 150)
+          // Send bulk invites
+          await sendBulkJobInvites(jobId, top150, {
+            sendEmail: true,
+            metadata: { source: "auto_matchmaking", topN: 150 }
+          })
+        }
+      } catch (err) {
+        console.error("Auto-matchmaking/invite error:", err)
+      }
+    })()
+  }
 
   return NextResponse.json({ job, success: true })
 }

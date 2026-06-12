@@ -15,6 +15,40 @@ function LoginContent() {
   const [sent, setSent] = useState(false)
   const [error, setError] = useState("")
 
+  React.useEffect(() => {
+    // Manually intercept hash fragment if present (e.g. from admin impersonation implicit grant)
+    if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const access_token = hashParams.get("access_token")
+      const refresh_token = hashParams.get("refresh_token")
+      
+      if (access_token && refresh_token) {
+        supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
+          if (!error) {
+            router.push(returnTo)
+          } else {
+            setError(error.message)
+          }
+        })
+        return
+      }
+    }
+
+    // Check if we already have a session immediately
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.push(returnTo)
+      }
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
+        router.push(returnTo)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [router, returnTo])
+
   const getRedirectBase = () =>
     typeof window !== "undefined"
       ? window.location.origin
@@ -147,6 +181,24 @@ function LoginContent() {
         padding: "40px 48px", background: "#ffffff",
       }}>
         <div style={{ width: "100%", maxWidth: 380 }}>
+
+          {/* Mobile Logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }} className="sm:hidden">
+            <div style={{
+              width: 32, height: 32, borderRadius: 8, background: "var(--gold)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="18" height="18" viewBox="0 0 32 32" fill="none">
+                <path d="M7 21 L13 13 L13 18 L19 18 L19 13 L25 21"
+                  fill="none" stroke="#fff" strokeWidth="2.6"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="7" cy="21" r="1.6" fill="#fff"/>
+              </svg>
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: "-0.02em", color: "var(--bright)" }}>
+              gatihire<span style={{ color: "var(--gold)" }}>.</span>
+            </span>
+          </div>
 
           {/* For employers pill */}
           <div style={{

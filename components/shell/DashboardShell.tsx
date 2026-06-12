@@ -308,18 +308,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     {!collapsed && (
                       <span style={{ flex: 1 }}>{item.label}</span>
                     )}
-                    {/* Credits badge on billing */}
-                    {!collapsed && item.id === "billing" && credits && (
-                      <span style={{
-                        fontFamily: "var(--font-mono)", fontSize: 9.5, fontWeight: 700,
-                        background: lowCredits ? "var(--rose-bg)" : "var(--gold-bg)",
-                        color: lowCredits ? "var(--rose)" : "var(--gold)",
-                        border: `1px solid ${lowCredits ? "var(--rose-border)" : "var(--gold-border)"}`,
-                        padding: "1px 6px", borderRadius: 99,
-                      }}>
-                        {credits.profile_unlock_credits + credits.job_post_credits}
-                      </span>
-                    )}
+                    {/* Credits badge on billing removed */}
                   </Link>
                 )
               })}
@@ -453,19 +442,40 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Credits indicator */}
             {credits && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "5px 10px",
-                background: lowCredits ? "var(--rose-bg)" : "var(--gold-bg)",
-                border: `1px solid ${lowCredits ? "var(--rose-border)" : "var(--gold-border)"}`,
-                borderRadius: 7, fontSize: 11.5, fontWeight: 600,
-                color: lowCredits ? "var(--rose)" : "var(--gold)",
-              }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2"/>
-                  <path d="M7 11V8a5 5 0 0 1 9.6-2" strokeLinecap="round"/>
-                </svg>
-                {credits.profile_unlock_credits} unlocks
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "5px 10px",
+                  background: lowCredits ? "var(--rose-bg)" : "var(--gold-bg)",
+                  border: `1px solid ${lowCredits ? "var(--rose-border)" : "var(--gold-border)"}`,
+                  borderRadius: 7, fontSize: 11.5, fontWeight: 600,
+                  color: lowCredits ? "var(--rose)" : "var(--gold)",
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/>
+                    <path d="M7 11V8a5 5 0 0 1 9.6-2" strokeLinecap="round"/>
+                  </svg>
+                  {credits.profile_unlock_credits} unlocks left
+                </div>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "5px 10px",
+                  background: credits.job_post_credits <= 0 ? "var(--rose-bg)" : "var(--gold-bg)",
+                  border: `1px solid ${credits.job_post_credits <= 0 ? "var(--rose-border)" : "var(--gold-border)"}`,
+                  borderRadius: 7, fontSize: 11.5, fontWeight: 600,
+                  color: credits.job_post_credits <= 0 ? "var(--rose)" : "var(--gold)",
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="8" width="18" height="13" rx="2"/>
+                    <path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                  {credits.job_post_credits} job credits
+                </div>
+                <Link href="/dashboard/billing" style={{
+                  fontSize: 12, fontWeight: 700, color: "var(--gold)", textDecoration: "underline", marginLeft: 4
+                }}>
+                  Add credits
+                </Link>
               </div>
             )}
             <Link href="/dashboard/jobs/new" style={{

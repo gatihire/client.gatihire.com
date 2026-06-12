@@ -28,7 +28,8 @@ const SUB_CATEGORY_OPTIONS = [
   { value: "operations_manager", label: "Operations Manager" },
   { value: "customer_support", label: "Customer Support" },
   { value: "sales_3pl", label: "3PL Sales" },
-  { value: "delivery_associate", label: "Delivery Associate" }
+  { value: "delivery_associate", label: "Delivery Associate" },
+  { value: "other", label: "Other" }
 ]
 
 const ENGLISH_LEVEL_OPTIONS = [
