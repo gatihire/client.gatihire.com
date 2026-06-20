@@ -171,7 +171,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div style={{
           padding: collapsed ? "18px 12px 16px" : "16px 14px 14px",
           borderBottom: "1px solid var(--line)",
-          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           {collapsed ? (
             <Link href="/dashboard" style={{ textDecoration: "none" }}>
@@ -182,15 +182,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               />
             </Link>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Link href="/dashboard" style={{ textDecoration: "none" }}>
-                <img
-                  src={BRAND_LOGO_URL}
-                  alt="GatiHire"
-                  style={{ width: 36, height: 36, objectFit: "contain" }}
-                />
-              </Link>
-            </div>
+            <Link href="/dashboard" style={{ textDecoration: "none", flex: 1 }}>
+              <img
+                src={BRAND_LOGO_URL}
+                alt="GatiHire"
+                style={{ width: "auto", height: 36, objectFit: "contain", maxWidth: "100%" }}
+              />
+            </Link>
           )}
           {!collapsed && (
             <span style={{
