@@ -190,14 +190,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   style={{ width: 36, height: 36, objectFit: "contain" }}
                 />
               </Link>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 14, color: "var(--bright)", letterSpacing: "-0.02em" }}>
-                  gatihire<span style={{ color: "var(--gold)" }}>.</span>
-                </div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, color: "var(--muted)", letterSpacing: ".1em", textTransform: "uppercase", marginTop: 1 }}>
-                  Client Portal
-                </div>
-              </div>
             </div>
           )}
           {!collapsed && (
