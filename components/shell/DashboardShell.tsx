@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, Suspense } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { BRAND_LOGO_URL } from "@/lib/branding"
 
 /* ── Icons ──────────────────────────────────────────────────── */
 function Icon({ path, size = 15 }: { path: React.ReactNode; size?: number }) {
@@ -173,30 +174,22 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between",
         }}>
           {collapsed ? (
-            <div style={{
-              width: 28, height: 28, borderRadius: 7, background: "var(--gold)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <svg width="15" height="15" viewBox="0 0 32 32" fill="none">
-                <path d="M7 21 L13 13 L13 18 L19 18 L19 13 L25 21"
-                  fill="none" stroke="#fff" strokeWidth="2.6"
-                  strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="7" cy="21" r="1.6" fill="#fff"/>
-              </svg>
-            </div>
+            <Link href="/dashboard" style={{ textDecoration: "none" }}>
+              <img
+                src={BRAND_LOGO_URL}
+                alt="GatiHire"
+                style={{ width: 32, height: 32, objectFit: "contain" }}
+              />
+            </Link>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: 7, background: "var(--gold)",
-                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-              }}>
-                <svg width="15" height="15" viewBox="0 0 32 32" fill="none">
-                  <path d="M7 21 L13 13 L13 18 L19 18 L19 13 L25 21"
-                    fill="none" stroke="#fff" strokeWidth="2.6"
-                    strokeLinecap="round" strokeLinejoin="round"/>
-                  <circle cx="7" cy="21" r="1.6" fill="#fff"/>
-                </svg>
-              </div>
+              <Link href="/dashboard" style={{ textDecoration: "none" }}>
+                <img
+                  src={BRAND_LOGO_URL}
+                  alt="GatiHire"
+                  style={{ width: 36, height: 36, objectFit: "contain" }}
+                />
+              </Link>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 14, color: "var(--bright)", letterSpacing: "-0.02em" }}>
                   gatihire<span style={{ color: "var(--gold)" }}>.</span>
