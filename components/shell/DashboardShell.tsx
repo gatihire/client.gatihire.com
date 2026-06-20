@@ -190,13 +190,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               />
             </Link>
           )}
-          {!collapsed && (
-            <span style={{
-              fontSize: 9, fontWeight: 700, letterSpacing: ".06em",
-              color: "var(--muted)", padding: "2px 6px",
-              border: "1px solid var(--line)", borderRadius: 4,
-            }}>BETA</span>
-          )}
+
         </div>
 
         {/* Company pill */}
