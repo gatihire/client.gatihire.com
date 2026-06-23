@@ -10,6 +10,26 @@ import { calculateCandidateScore, applySidebarFilters } from "@/lib/scoring"
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
+const ROLE_SYNONYMS: Record<string, string[]> = {
+  "fleet manager": ["fleet management", "transportation manager", "logistics manager", "transport manager", "fleet supervisor"],
+  "truck driver": ["driver", "heavy vehicle driver", "commercial driver", "truck operator", "vehicle driver"],
+  "logistics coordinator": ["logistics executive", "supply chain coordinator", "transport coordinator", "dispatch executive"],
+  "operations manager": ["operations executive", "operations head", "fleet manager", "branch manager"],
+  "dispatcher": ["dispatch executive", "dispatch coordinator", "fleet dispatcher"],
+  "supply chain": ["procurement", "warehouse", "inventory", "logistics", "distribution"],
+  "driver": ["truck driver", "vehicle operator", "commercial driver", "delivery driver"],
+}
+
+function expandRoleVariants(role: string): string[] {
+  const q = (role || "").trim().toLowerCase()
+  if (!q) return []
+  const out = new Set<string>([role.trim()])
+  for (const [key, synonyms] of Object.entries(ROLE_SYNONYMS)) {
+    if (q.includes(key) || key.includes(q)) synonyms.forEach(s => out.add(s))
+  }
+  return Array.from(out)
+}
+
 function buildWebsearchQuery(terms: string[], max = 15): string {
   return terms.slice(0, max).map(t => t.includes(" ") ? `"${t}"` : t).filter(Boolean).join(" OR ")
 }
@@ -25,7 +45,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}))
-  const { jd, offset: reqOffset = 0, limit: reqLimit = 20, filters = {} } = body
+  const { jd, offset: reqOffset = 0, limit: reqLimit = 20, filters = {}, refresh = false } = body
   if (!jd?.trim()) return NextResponse.json({ error: "Job description required" }, { status: 400 })
 
   const offset = parseInt(reqOffset, 10) || 0
@@ -37,7 +57,7 @@ export async function POST(request: NextRequest) {
   let criteriaResult: any = null
   let embedding: number[] = []
 
-  if (redis) {
+  if (redis && !refresh) {
     const cachedData = await redis.get<{ criteria: any, embedding: number[] }>(cacheKey)
     if (cachedData) {
       criteriaResult = cachedData.criteria
@@ -72,7 +92,8 @@ Return ONLY valid JSON:
   const criteria = criteriaResult
 
   // 2. Build websearch query from extracted keywords
-  const allKeyTerms = [...(criteria.required_skills || []), ...(criteria.key_keywords || []), criteria.title || ""].filter(Boolean)
+  const roleVariants = expandRoleVariants(criteria.title || "")
+  const allKeyTerms = [...roleVariants, ...(criteria.required_skills || []), ...(criteria.key_keywords || [])].filter(Boolean)
   const websearchQ = buildWebsearchQuery(allKeyTerms, 15).replace(/[()]/g, " ").trim()
 
   // 3. Map both JD criteria and Frontend Filters to RPC filters

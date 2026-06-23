@@ -9,7 +9,7 @@ export default async function DashboardJobPage(props: { params: Promise<{ id: st
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8">
-      <JobDashboardClient jobId={id} initialTab="suggested" />
+      <JobDashboardClient jobId={id} initialTab="applicants" />
     </main>
   )
 }

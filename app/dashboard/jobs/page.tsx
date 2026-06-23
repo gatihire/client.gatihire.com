@@ -236,7 +236,7 @@ export default function JobsPage() {
                 <div
                   key={job.id}
                   onClick={() => {
-                    setSelectedJobInitialTab(hasMatches ? "suggested" : "applicants")
+                    setSelectedJobInitialTab("applicants")
                     setSelectedJobId(job.id)
                   }}
                   style={{
@@ -272,7 +272,7 @@ export default function JobsPage() {
                     </div>
                   </div>
 
-                  {/* Applicants + AI Matches */}
+                  {/* Applicants + Database Matches */}
                   <div style={{ display: "flex", gap: 16 }}>
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.02em" }}>{job.totalApplicants || 0}</div>
@@ -294,12 +294,12 @@ export default function JobsPage() {
                     ) : hasMatches ? (
                       <div>
                         <div style={{ fontSize: 18, fontWeight: 800, color: "var(--green)", letterSpacing: "-0.02em" }}>{job.match_count}</div>
-                        <div style={{ fontSize: 10.5, color: "var(--dim)" }}>AI matches</div>
+                        <div style={{ fontSize: 10.5, color: "var(--dim)" }}>Database matches</div>
                       </div>
                     ) : (
                       <div>
                         <div style={{ fontSize: 18, fontWeight: 800, color: "var(--dim)", letterSpacing: "-0.02em" }}>—</div>
-                        <div style={{ fontSize: 10.5, color: "var(--dim)" }}>AI matches</div>
+                        <div style={{ fontSize: 10.5, color: "var(--dim)" }}>Database matches</div>
                       </div>
                     )}
                   </div>
@@ -337,6 +337,7 @@ export default function JobsPage() {
       {selectedJobId && (
         <JobDashboardClient
           jobId={selectedJobId}
+          jobData={jobs.find(j => j.id === selectedJobId)}
           onClose={() => setSelectedJobId(null)}
           initialTab={selectedJobInitialTab as "applicants" | "suggested" | "unlocked"}
         />

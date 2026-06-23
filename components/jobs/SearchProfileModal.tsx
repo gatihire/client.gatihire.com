@@ -45,7 +45,7 @@ export function SearchCandidateProfileModal({ candidate, onClose, detailsCache, 
   candidate: any
   onClose: () => void
   detailsCache: React.MutableRefObject<Record<string, { work_experience: any[]; education: any[] }>>
-  aiAnalysis?: string
+  aiAnalysis?: string | null
   unlocking?: boolean
   onUnlock?: () => void
 }) {

@@ -40,7 +40,7 @@ export default function SearchesPage() {
   const [creditReqAmount, setCreditReqAmount] = useState("10")
   const [creditReqMsg, setCreditReqMsg] = useState("")
   const [creditReqLoading, setCreditReqLoading] = useState(false)
-  const [aiAnalysisMap, setAiAnalysisMap] = useState<Record<string, string>>({})
+  const [aiAnalysisMap, setAiAnalysisMap] = useState<Record<string, string | null>>({})
   const aiAnalysisFetchingRef = useRef<Set<string>>(new Set())
   const candidateDetailsCache = useRef<Record<string, { work_experience: any[]; education: any[] }>>({})
 

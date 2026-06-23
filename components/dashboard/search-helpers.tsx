@@ -445,7 +445,7 @@ export function CandidateCard({ c, unlocking, onUnlock, onClick, aiAnalysis, sel
             </span>
             {formatAnalysis(aiAnalysis)}
           </div>
-        ) : aiAnalysis === undefined ? null : (
+        ) : aiAnalysis === null ? null : (
           /* Skeleton while AI analysis is generating */
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "12px 14px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
             <Sparkles size={14} color="#059669" style={{ flexShrink: 0, marginTop: 2 }} />

@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
-import { CandidateCard, ProfileDrawer } from "@/components/dashboard/search-helpers"
+import { CandidateCard, FilterSidebar, SidebarFilters, EMPTY_FILTERS, SearchSkeletonGrid } from "@/components/dashboard/search-helpers"
+import { PageLoader } from "@/components/ui/Loader"
 
 /* ─────── SVG Icons ─────── */
 function IconBack() {
@@ -595,43 +596,57 @@ function MoveToModal({ stages, selectedCount, onMove, onClose }: {
   )
 }
 
+// Global cache for Job Dashboard to prevent reloading when reopening the modal
+const globalJobCache: Record<string, {
+  applicants: any[],
+  suggested: any[],
+  totalSuggested: number,
+  unlockedProfiles: any[],
+  stages: any[],
+  stagesLoaded: boolean,
+  aiAnalysisMap: Record<string, string | null>,
+  filters: SidebarFilters
+}> = {}
+
 /* ─────── Main Component ─────── */
-export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: string; onClose?: () => void; initialTab?: "applicants" | "suggested" | "unlocked" }) {
+export function JobDashboardClient({ jobId, jobData, onClose, initialTab }: { jobId: string; jobData?: any; onClose?: () => void; initialTab?: "applicants" | "suggested" | "unlocked" }) {
   const router = useRouter()
-  const [job, setJob] = useState<any>(null)
+  const cache = globalJobCache[jobId] || null
+  
+  const [job, setJob] = useState<any>(jobData || null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"applicants" | "suggested" | "unlocked">(initialTab || "applicants")
-  const [stages, setStages] = useState<any[]>([])
+  const [stages, setStages] = useState<any[]>(cache?.stages || [])
   const [activeStage, setActiveStage] = useState<string | null>(null)
-  const [stagesLoaded, setStagesLoaded] = useState(false)
+  const [stagesLoaded, setStagesLoaded] = useState(cache?.stagesLoaded || false)
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
 
   // Applicants
-  const [applicants, setApplicants] = useState<any[]>([])
+  const [applicants, setApplicants] = useState<any[]>(cache?.applicants || [])
   const [loadingApplicants, setLoadingApplicants] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const applicantsFetched = useRef(false)
+  const applicantsFetched = useRef(!!cache?.applicants?.length)
 
   // Suggested
-  const [suggested, setSuggested] = useState<any[]>([])
+  const [suggested, setSuggested] = useState<any[]>(cache?.suggested || [])
   const [loadingSuggested, setLoadingSuggested] = useState(false)
-  const [suggestedFetched, setSuggestedFetched] = useState(false)
+  const [suggestedFetched, setSuggestedFetched] = useState(!!cache?.suggested?.length)
   const [page, setPage] = useState(1)
-  const [totalSuggested, setTotalSuggested] = useState(0)
+  const [totalSuggested, setTotalSuggested] = useState(cache?.totalSuggested || jobData?.match_count || 0)
   const [selectedSuggestedIds, setSelectedSuggestedIds] = useState<Set<string>>(new Set())
   const [lastSuggestedError, setLastSuggestedError] = useState<string | null>(null)
 
   // Unlocked
-  const [unlockedProfiles, setUnlockedProfiles] = useState<any[]>([])
+  const [unlockedProfiles, setUnlockedProfiles] = useState<any[]>(cache?.unlockedProfiles || [])
   const [loadingUnlocked, setLoadingUnlocked] = useState(false)
-  const [unlockedFetched, setUnlockedFetched] = useState(false)
+  const [unlockedFetched, setUnlockedFetched] = useState(!!cache?.unlockedProfiles?.length)
   const [selectedUnlockedIds, setSelectedUnlockedIds] = useState<Set<string>>(new Set())
 
   // Profile interaction
   const [unlocking, setUnlocking] = useState<string | null>(null)
   const [selectedCard, setSelectedCard] = useState<any | null>(null)
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null)
-  const [aiAnalysisMap, setAiAnalysisMap] = useState<Record<string, string>>({})
+  const [aiAnalysisMap, setAiAnalysisMap] = useState<Record<string, string | null>>(cache?.aiAnalysisMap || {})
   const candidateDetailsCache = useRef<Record<string, { work_experience: any[]; education: any[] }>>({})
 
   // Selection & bulk actions
@@ -640,7 +655,18 @@ export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: stri
 
   // Edit & Delete
   const [isEditing, setIsEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ title: "", location: "", description: "" })
+  const [editForm, setEditForm] = useState({
+    title: jobData?.title || "",
+    location: jobData?.location || "",
+    description: jobData?.description || "",
+    industry: jobData?.industry || "",
+    salary_min: jobData?.salary_min || "",
+    salary_max: jobData?.salary_max || "",
+    experience_min_years: jobData?.experience_min_years || "",
+    experience_max_years: jobData?.experience_max_years || "",
+    openings: jobData?.openings || "",
+    skills_must_have: jobData?.skills_must_have || []
+  })
   const [savingJob, setSavingJob] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -649,6 +675,24 @@ export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: stri
     const { data: { session } } = await supabase.auth.getSession()
     return session?.access_token || null
   }, [])
+
+  // Filters for Suggested / Database Matches
+  const [filters, setFilters] = useState<SidebarFilters>(cache?.filters || EMPTY_FILTERS)
+  const [showFilters, setShowFilters] = useState(true)
+
+  // Update global cache when state changes
+  useEffect(() => {
+    globalJobCache[jobId] = {
+      applicants,
+      suggested,
+      totalSuggested,
+      unlockedProfiles,
+      stages,
+      stagesLoaded,
+      aiAnalysisMap,
+      filters
+    }
+  }, [jobId, applicants, suggested, totalSuggested, unlockedProfiles, stages, stagesLoaded, aiAnalysisMap, filters])
 
   /* ── Data fetching with caching ── */
   useEffect(() => {
@@ -660,7 +704,18 @@ export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: stri
         const data = await res.json()
         if (data.job) {
           setJob(data.job)
-          setEditForm({ title: data.job.title, location: data.job.location || "", description: data.job.description || "" })
+          setEditForm({
+            title: data.job.title,
+            location: data.job.location || "",
+            description: data.job.description || "",
+            industry: data.job.industry || "",
+            salary_min: data.job.salary_min || "",
+            salary_max: data.job.salary_max || "",
+            experience_min_years: data.job.experience_min_years || "",
+            experience_max_years: data.job.experience_max_years || "",
+            openings: data.job.openings || "",
+            skills_must_have: data.job.skills_must_have || []
+          })
         }
       } catch (e) { console.error(e) }
       setLoading(false)
@@ -758,46 +813,60 @@ export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: stri
     setLoadingUnlocked(false)
   }
 
-  async function fetchSuggested(pageToFetch = 1) {
+  async function fetchSuggested(pageToFetch = 1, forceRefresh = false) {
     setLoadingSuggested(true)
     setLastSuggestedError(null)
     const token = await getToken()
     if (token && job?.description) {
       try {
-        let res = await fetch(`/api/client/jobs/${jobId}/matches?page=${pageToFetch}&limit=25`, { headers: { Authorization: `Bearer ${token}` } })
-        let data = await res.json()
-        if (data.needs_matchmaking) {
-          const genRes = await fetch(`/api/client/jobs/${jobId}/matches`, { method: "POST", headers: { Authorization: `Bearer ${token}` } })
-          if (!genRes.ok) { const gd = await genRes.json().catch(() => ({})); throw new Error(gd.error || "Failed") }
-          res = await fetch(`/api/client/jobs/${jobId}/matches?page=${pageToFetch}&limit=25`, { headers: { Authorization: `Bearer ${token}` } })
-          data = await res.json()
-        }
-        setSuggested(data.results || [])
+        const offset = (pageToFetch - 1) * 25;
+        const res = await fetch(`/api/client/search/jd`, { 
+          method: "POST", 
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ jd: job.description, limit: 25, offset, filters, refresh: forceRefresh })
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || "Failed")
+
+        setSuggested(pageToFetch === 1 ? (data.results || []) : prev => {
+          const newItems = (data.results || []).filter((c: any) => !prev.some(p => p.id === c.id))
+          return [...prev, ...newItems]
+        })
         setTotalSuggested(data.total || 0)
         setSuggestedFetched(true)
+        setPage(pageToFetch)
 
-        if (data.results && data.results.length > 0) {
-          const profileIds = data.results.map((c: any) => c.id)
-          fetch(`/api/client/jobs/${jobId}/matched`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ profileIds, matchScore: 0.85, matchReason: "AI-matched based on JD" })
-          }).catch(console.error)
+        // Asynchronously save to job_matches so it reflects in match_count on dashboard
+        if (data.results && data.results.length > 0 && pageToFetch === 1 && !Object.keys(filters).some(k => Array.isArray(filters[k as keyof typeof filters]) ? (filters[k as keyof typeof filters] as any[]).length > 0 : !!filters[k as keyof typeof filters])) {
+           fetch(`/api/client/jobs/${jobId}/matches`, {
+             method: "POST",
+             headers: { Authorization: `Bearer ${token}` }
+           }).catch(console.error)
         }
 
         if (data.results?.length > 0) {
-          const unanalyzed = data.results.filter((c: any) => !aiAnalysisMap[c.id]).slice(0, 5)
+          const unanalyzed = data.results.filter((c: any) => aiAnalysisMap[c.id] === undefined).slice(0, 5)
           if (unanalyzed.length > 0) {
             fetch("/api/client/search/analyze", {
               method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
               body: JSON.stringify({ candidates: unanalyzed, requirement: job.description })
             }).then(r => r.json()).then(d => {
-              if (d.analysis) setAiAnalysisMap(prev => {
+              setAiAnalysisMap(prev => {
                 const next = { ...prev }
-                d.analysis.forEach((item: any) => { if (item.id && item.analysis) next[item.id] = item.analysis })
+                if (d.analysis) {
+                  d.analysis.forEach((item: any) => { next[item.id] = item.analysis || null })
+                }
+                unanalyzed.forEach((c: any) => { if (next[c.id] === undefined) next[c.id] = null })
                 return next
               })
-            }).catch(console.error)
+            }).catch(e => {
+              console.error(e)
+              setAiAnalysisMap(prev => {
+                const next = { ...prev }
+                unanalyzed.forEach((c: any) => { next[c.id] = null })
+                return next
+              })
+            })
           }
         }
       } catch (e) {
@@ -807,6 +876,14 @@ export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: stri
     }
     setLoadingSuggested(false)
   }
+
+  // Trigger refetch when filters change
+  useEffect(() => {
+    if (activeTab === "suggested" && job?.description && suggestedFetched) {
+      fetchSuggested(1)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters])
 
   async function setApplicantStage(applicationId: string, stage: string, notes?: string) {
     const token = await getToken()
@@ -905,7 +982,7 @@ export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: stri
   }
 
   /* ── Render helpers ── */
-  if (loading) return <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ color: "#fff", fontSize: 14 }}>Loading...</div></div>
+  if (loading) return <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}><PageLoader /></div>
   if (!job) return <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ background: "#fff", padding: 40, borderRadius: 12, color: "var(--dim)" }}>Job not found.</div></div>
 
   const normalizedApplicants = applicants.map((a: any) => {
@@ -973,8 +1050,8 @@ export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: stri
         {/* ── Tabs ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 0, padding: "0 24px", borderBottom: "1px solid var(--line)", background: "#fff", flexShrink: 0 }}>
           {([
-            { key: "applicants", label: "Applicants", count: normalizedApplicants.length },
-            { key: "suggested", label: "AI Matches", count: suggested.length || totalSuggested },
+            { key: "applicants", label: "Applicants", count: applicantsFetched.current ? normalizedApplicants.length : (jobData?.totalApplicants || 0) },
+            { key: "suggested", label: "Database Matches", count: suggestedFetched ? (suggested.length || totalSuggested) : (jobData?.match_count || 0) },
             { key: "unlocked", label: "Unlocked", count: unlockedProfiles.length },
           ] as const).map(tab => (
             <button
@@ -1236,51 +1313,57 @@ export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: stri
 
           {/* ═══ SUGGESTED TAB ═══ */}
           {activeTab === "suggested" && (
-            <div style={{ padding: "16px 24px" }}>
-              {loadingSuggested ? (
-                <div style={{ textAlign: "center", color: "var(--dim)", padding: 60, background: "#fff", borderRadius: 12 }}>
-                  <div style={{ marginBottom: 8 }}>Finding best matches based on JD...</div>
-                  <div style={{ fontSize: 12, color: "var(--dim)" }}>This may take a moment</div>
-                </div>
-              ) : suggested.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "1px dashed var(--line2)" }}>
-                  <div style={{ marginBottom: 12, color: "var(--dim)" }}>{lastSuggestedError || "No suggestions found yet."}</div>
-                  <button onClick={() => fetchSuggested(page)} style={{ background: "var(--gold)", border: "none", borderRadius: 8, padding: "10px 20px", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}><IconSparkle /> Run AI Matching</span>
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "var(--gold-bg)", border: "1px solid var(--gold-border)", borderRadius: 8, fontSize: 13, color: "var(--gold)", fontWeight: 600 }}>
-                      <IconSparkle /> {totalSuggested} pre-vetted candidates matched
+            <div style={{ display: "flex", gap: 20, alignItems: "flex-start", padding: "16px 24px" }}>
+              <FilterSidebar filters={filters} setFilters={setFilters} show={showFilters} setShow={setShowFilters} />
+              
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {loadingSuggested ? (
+                  <div style={{ marginTop: 16 }}><SearchSkeletonGrid /></div>
+                ) : suggested.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "1px dashed var(--line2)" }}>
+                    <div style={{ marginBottom: 12, color: "var(--dim)" }}>{lastSuggestedError || "No matches found based on current criteria."}</div>
+                    <button onClick={() => { setFilters(EMPTY_FILTERS); fetchSuggested(1) }} style={{ background: "var(--gold)", border: "none", borderRadius: 8, padding: "10px 20px", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 6 }}><IconSparkle /> Reset Filters & Retry</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "var(--gold-bg)", border: "1px solid var(--gold-border)", borderRadius: 8, fontSize: 13, color: "var(--gold)", fontWeight: 600 }}>
+                        <IconSparkle /> {totalSuggested >= 500 ? "500+" : totalSuggested} pre-vetted candidates matched
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <button onClick={() => fetchSuggested(1, true)} style={{ padding: "8px 16px", background: "#fff", border: "1px solid var(--line)", borderRadius: 8, color: "var(--secondary)", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                          Refresh Database
+                        </button>
+                        {selectedSuggestedIds.size > 0 && (
+                          <button onClick={() => addMultipleToPipeline(Array.from(selectedSuggestedIds), "suggested")} disabled={unlocking === "multiple"}
+                            style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--gold)", border: "none", color: "#fff", padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                            {unlocking === "multiple" ? "Adding..." : `Unlock & Add ${selectedSuggestedIds.size} to Pipeline`}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {selectedSuggestedIds.size > 0 && (
-                      <button onClick={() => addMultipleToPipeline(Array.from(selectedSuggestedIds), "suggested")} disabled={unlocking === "multiple"}
-                        style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--gold)", border: "none", color: "#fff", padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                        {unlocking === "multiple" ? "Adding..." : `Unlock & Add ${selectedSuggestedIds.size} to Pipeline`}
-                      </button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {suggested.map(c => (
+                        <CandidateCard
+                          key={c.id} c={c} unlocking={unlocking === c.id} onUnlock={() => unlock(c.id)} onClick={() => setSelectedCard(c)}
+                          aiAnalysis={aiAnalysisMap[c.id]} selectable={true} selected={selectedSuggestedIds.has(c.id)}
+                          onToggleSelect={() => setSelectedSuggestedIds(prev => { const next = new Set(prev); if (next.has(c.id)) next.delete(c.id); else next.add(c.id); return next })}
+                          primaryCta={{ label: "Add to Screening", disabled: !c.is_unlocked, onClick: () => addMultipleToPipeline([c.id], "suggested") }}
+                        />
+                      ))}
+                    </div>
+                    {totalSuggested > 25 && (
+                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 12, paddingBottom: 24 }}>
+                        <button onClick={() => { setPage(p => p - 1); fetchSuggested(page - 1) }} disabled={page <= 1} style={{ padding: "6px 14px", background: "#fff", border: "1px solid var(--line)", borderRadius: 8, color: "var(--secondary)", fontSize: 12, cursor: page <= 1 ? "not-allowed" : "pointer", opacity: page <= 1 ? 0.5 : 1 }}>Prev</button>
+                        <span style={{ fontSize: 12, color: "var(--dim)" }}>Page {page} of {Math.ceil(totalSuggested / 25)}</span>
+                        <button onClick={() => { setPage(p => p + 1); fetchSuggested(page + 1) }} disabled={page >= Math.ceil(totalSuggested / 25)} style={{ padding: "6px 14px", background: "#fff", border: "1px solid var(--line)", borderRadius: 8, color: "var(--secondary)", fontSize: 12, cursor: "pointer" }}>Next</button>
+                      </div>
                     )}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-                    {suggested.map(c => (
-                      <CandidateCard
-                        key={c.id} c={c} unlocking={unlocking === c.id} onUnlock={() => unlock(c.id)} onClick={() => setSelectedCard(c)}
-                        aiAnalysis={aiAnalysisMap[c.id]} selectable={true} selected={selectedSuggestedIds.has(c.id)}
-                        onToggleSelect={() => setSelectedSuggestedIds(prev => { const next = new Set(prev); if (next.has(c.id)) next.delete(c.id); else next.add(c.id); return next })}
-                        primaryCta={{ label: "Add to Screening", disabled: !c.is_unlocked, onClick: () => addMultipleToPipeline([c.id], "suggested") }}
-                      />
-                    ))}
-                  </div>
-                  {totalSuggested > 25 && (
-                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 12 }}>
-                      <button onClick={() => { setPage(p => p - 1); fetchSuggested(page - 1) }} disabled={page <= 1} style={{ padding: "6px 14px", background: "#fff", border: "1px solid var(--line)", borderRadius: 8, color: "var(--secondary)", fontSize: 12, cursor: page <= 1 ? "not-allowed" : "pointer", opacity: page <= 1 ? 0.5 : 1 }}>Prev</button>
-                      <span style={{ fontSize: 12, color: "var(--dim)" }}>Page {page} of {Math.ceil(totalSuggested / 25)}</span>
-                      <button onClick={() => { setPage(p => p + 1); fetchSuggested(page + 1) }} disabled={page >= Math.ceil(totalSuggested / 25)} style={{ padding: "6px 14px", background: "#fff", border: "1px solid var(--line)", borderRadius: 8, color: "var(--secondary)", fontSize: 12, cursor: "pointer" }}>Next</button>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
@@ -1351,21 +1434,66 @@ export function JobDashboardClient({ jobId, onClose, initialTab }: { jobId: stri
         {isEditing && (
           <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} onClick={() => setIsEditing(false)} />
-            <div style={{ position: "relative", width: 520, background: "#fff", borderRadius: 16, padding: 28, zIndex: 1, display: "flex", flexDirection: "column", gap: 18, boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
-              <h2 style={{ fontSize: 18, color: "var(--bright)", fontWeight: 800, margin: 0 }}>Edit Job</h2>
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Title</label>
-                <input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+            <div style={{ position: "relative", width: 620, maxHeight: "90vh", background: "#fff", borderRadius: 16, zIndex: 1, display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
+              <div style={{ padding: "24px 28px", borderBottom: "1px solid var(--line)" }}>
+                <h2 style={{ fontSize: 18, color: "var(--bright)", fontWeight: 800, margin: 0 }}>Edit Job</h2>
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Location</label>
-                <input value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+              <div style={{ padding: "20px 28px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 18 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Title *</label>
+                    <input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Location *</label>
+                    <input value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+                  </div>
+                </div>
+                
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Description</label>
+                  <textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} rows={5} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", resize: "vertical", fontFamily: "var(--font-body)" }} />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Industry</label>
+                    <input value={editForm.industry} onChange={e => setEditForm({ ...editForm, industry: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Openings</label>
+                    <input type="number" value={editForm.openings} onChange={e => setEditForm({ ...editForm, openings: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Salary Min</label>
+                    <input type="number" value={editForm.salary_min} onChange={e => setEditForm({ ...editForm, salary_min: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Salary Max</label>
+                    <input type="number" value={editForm.salary_max} onChange={e => setEditForm({ ...editForm, salary_max: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Min Experience (Years)</label>
+                    <input type="number" value={editForm.experience_min_years} onChange={e => setEditForm({ ...editForm, experience_min_years: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Max Experience (Years)</label>
+                    <input type="number" value={editForm.experience_max_years} onChange={e => setEditForm({ ...editForm, experience_max_years: e.target.value })} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+                  </div>
+                </div>
+                
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Required Skills (comma separated)</label>
+                  <input value={(editForm.skills_must_have || []).join(", ")} onChange={e => setEditForm({ ...editForm, skills_must_have: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })} placeholder="e.g. React, Node.js, SAP" style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", fontFamily: "var(--font-body)" }} />
+                </div>
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "var(--dim)", marginBottom: 6, fontWeight: 600 }}>Description</label>
-                <textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} rows={6} style={{ width: "100%", padding: "10px 14px", background: "var(--ink)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--bright)", fontSize: 14, boxSizing: "border-box", resize: "vertical", fontFamily: "var(--font-body)" }} />
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "20px 28px", borderTop: "1px solid var(--line)" }}>
                 <button onClick={() => setIsEditing(false)} style={{ padding: "9px 18px", background: "#fff", border: "1px solid var(--line)", borderRadius: 8, color: "var(--secondary)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Cancel</button>
                 <button onClick={saveJob} disabled={savingJob} style={{ padding: "9px 18px", background: "var(--gold)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
                   {savingJob ? "Saving..." : "Save Changes"}
